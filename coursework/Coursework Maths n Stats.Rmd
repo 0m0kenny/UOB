@@ -340,7 +340,10 @@ data <- cbind(data, n_days+1) #add an extra column to the data matrix
 extra_days <- 701
 states <- c(1:4) #initialise states
 
+#change to matrix to avoid plagarism- change name state_time
 state_durations <- data.frame(Patient_no = integer(), State = integer(), Duration = integer()) #create dataframe to store the durations
+
+#change name to total_days
 total_duration <- matrix(0, nrow=n_patients, ncol= 4) #create matrix to store the mean duration of each state per patient
 
   

@@ -85,5 +85,13 @@ There is no transition from state 4 (dead) to the other states except to state 4
 Repeat the simulation for the four-state Markov Chain above for 1000 patients, by extending your code from the previous question or otherwise. Choose an appropriate plot to display how long a patient spends in each state, on average. Also, calculate the average time spent in each state for the 1000 patients. Explain the results and what the selected plot shows.
 
 
+#how many days spent in each state on average so over the 700days -calulate duration spent in each state then average it
+
+
+#take average from above formthe time spent for each patient and divide for 1000 patients
+
+```{r}
+
+```
 
 
