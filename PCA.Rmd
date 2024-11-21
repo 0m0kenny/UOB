@@ -1,0 +1,205 @@
+---
+title: "PCA"
+output: html_document
+date: "2024-10-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(readr)
+library(ggplot2)
+library(tidyverse)
+options(bitmapType='cairo')
+rm(list=ls())
+```
+
+9.3 Example: PCA on the mtcars dataset
+There are many datasets built into R. Wed will look at the mtcars dataset. Type ?mtcars to get a description of data. Then use head() function to have a look at the first few rows; and dim() to get the dimensions of the data.
+
+```{r}
+
+head(mtcars) #mtcars is an inbuilt dataset in r
+dim(mtcars) #get no of dimensions
+mtcars
+
+
+```
+
+Now we can perform a principal component analysis, in R it is implemented as the prcomp() function.  Here we set center and scale arguments to TRUE, recall from the lecture why this is important. We can try to perform PCA without scaling and centering and compare.
+
+We can use the summary() function to summarise the results from PCA, it will return the standard deviation, the proportion of variance explained by each principal component, and the cumulative proportion.
+
+```{r}
+cars_pca <- prcomp(mtcars, center = TRUE, scale = TRUE) #perform pca analysis
+pca_summary <- summary(cars_pca) #summarise the analysis
+pca_summary
+```
+Note, Proportion of Variance will always add up to 1 if you include all principal components. Here the PC1 explain 60.08 of the variance, and PC2 explains 24.09, which means together PC1 and PC2 account for 84.17 of the variance.
+
+
+Using the str() function we can see the full structure of an R object, or alternatively using ?prcomp in the Value section. In this case the cars_pca variable is a list containing several variables, x is the data represented using the new principal components. We can now plot the data in the first two principal components:
+
+```{r}
+pca_df <- data.frame(cars_pca$x, make = stringr::word(rownames(mtcars), 1)) #make a dataframe combining the principal components which are x (select cars_pca on global environment to see what x are) and then taking the first line of each rowname from the original dataset into a new column called make this enables you to have datapoints in plot by the coloured by make.
+
+ggplot(pca_df, aes(x = PC1, y = PC2, col = make)) + #plot using the first 2 components
+geom_point(size = 3) +
+labs(x = "PC1 60.08%",
+     y = "PC2 24.09 %",
+     title = "Principal components for mtcars") +
+theme(legend.position = "bottom")
+
+plot(pca_df$PC1, pca_df$PC2) #it is also possible to do this using base plot if you prefer.
+```
+
+9.4 Creating plots for PCA
+
+Next we look at another representation of the data, the biplot. This is a combination of a PCA plot of the data and a score plot. We saw the PCA plot in the previous section in a biplot we add the original axis as arrows.
+
+We can see the original axis starting from the origin. Therefore we can make observations about the original variables (e.g. cyl and mpg contribute to PC1) and how the data points relates to these axes.
+
+```{r}
+biplot(cars_pca) #a biplot (listen to lecture recording for explanation)
+```
+
+
+#9.5 Exercise I
+
+Now try to perform a PCA on the USArrests data also build into R. Typing ?USArrests will give you further information on the data. Perform the analysis on the subset USArrests[, -3] data.
+
+Discuss with your neighbour and the instructor what you observe in the plot. What do you think the first two principal components represent in this case?
+
+```{r}
+USArrests[, -3] # data interested in -show all rows and exclude the 3rd column
+arrest_pca <- prcomp(USArrests[, -3], center = TRUE, scale = TRUE) #perform pca analysis
+
+pca_summary <- summary(arrest_pca) #summarise the analysis
+
+pca_summary
+
+pca_df <- data.frame(arrest_pca$x, city = stringr::word(rownames(USArrests[,-3]), 1))
+
+pca_df
+
+ggplot(pca_df, aes(x = PC1, y = PC2, col = city)) + #plot using the first 2 components
+geom_point(size = 3) +
+labs(x = "PC1 78.62%",
+     y = "PC2 15.27%",
+     title = "Principal components for USArrests") +
+theme(legend.position = "bottom")
+
+plot(pca_df$PC1, pca_df$PC2) #it is also possible to do this using base plot if you prefer.
+```
+9.6 Example: Single cell data
+
+We can now try to apply what we learned above on a more realistic datasets. You can download the data either on canvas or using these links Pollen2014.txt and SupplementaryLabels.txt. 
+
+Here we will be dealing with single cell RNA-Seq (scRNA-Seq) data, which consist of 300 single cells measured across 8686 genes.
+
+```{r}
+pollen_df <-read.table("Pollen2014.txt", sep=',', header = T, row.names=1) #read the file and turn it into a table using comma separator, header set to true because the first row contains the names of the columns, row.names =1 says that the first column has the names of the rows.
+
+label_df <-read.table("SupplementaryLabels.txt", sep=',', header = T)
+
+pollen_df[1:10, 1:6] #displays first 10 rows and first 6 columns
+```
+
+Measurements of scRNA-Seq data are integer counts, this data does not have good properties so we perform a transformation on the data. The most commonly used transformation on RNA-Seq count data is log2. 
+
+We will also transpose the data matrix to rows representing cells and columns representing genes. This is the data we can use to perform PCA.
+
+
+```{r}
+pollen_df <-read.table("Pollen2014.txt", sep=',', header = T,row.names=1)
+
+label_df <-read.table("SupplementaryLabels.txt", sep=',', header = T)
+
+pollen_df[1:10, 1:6]
+
+
+pollen_mat <- log2(as.matrix(pollen_df) + 1) # transforming the table into a matrix then getting the log2 of all values then adding 1 because you can't log a 0 number
+
+pollen_mat <- t(pollen_mat)# transpose the transformed data
+```
+We will now use information that we read into the label_df variable to rename cells.
+
+Next we perform PCA on the data and extract the proportion of variance explained by each component.
+
+```{r}
+
+pollen_df <-read.table("Pollen2014.txt", sep=',', header = T,row.names=1)
+
+label_df <-read.table("SupplementaryLabels.txt", sep=',', header = T)
+
+pollen_df[1:10, 1:6]
+
+pollen_mat <- log2(as.matrix(pollen_df) + 1) 
+
+pollen_mat <- t(pollen_mat)
+
+colnames(label_df) # Check which columns we have available
+
+rownames(pollen_mat) <- label_df$Cell_names # rename rows of the transformed matrix with the cellnames of the label dataset
+
+sc_pca <- prcomp(pollen_mat) #perform pca without using centering and scaling first
+
+
+pr_var <- sc_pca$sdev^2 # need to find unit variance for each since it wasn't done in prcomp() function so stand
+
+
+prop_var_exp <- pr_var / sum(pr_var) # compute the variance explained by each principal component
+```
+
+Think about the calculation and what exactly it means. We can visualise this
+
+```{r}
+var_exp <- data.frame(variance = prop_var_exp, pc = 1:length(prop_var_exp)) #create dataset with first column the prop_var_exp labelled as variance and the 2nd column labelled as pc and numbered 1 to the total no of the components
+
+
+ggplot(var_exp[1:30, ], aes(x = pc, y = variance)) + #plot the first 30 components
+    geom_bar(stat = "identity") +
+    labs(x = "Principal Component",
+         y  = "Variance explained")
+
+
+```
+We see that the first few principal components explain significant variance, but after about the PC10, there is very limited contribution. Next we will plot the data using the first two Principal components as before.
+
+```{r}
+sc_pca_df <- data.frame(sc_pca$x, cell = rownames(sc_pca$x),
+                        var_exp = prop_var_exp)
+
+ggplot(sc_pca_df, aes(x = PC1, y = PC2, col = cell)) +
+    geom_point(size = 2) +
+    theme(legend.position = "bottom")
+```
+
+
+
+
+```{r}
+
+```
+

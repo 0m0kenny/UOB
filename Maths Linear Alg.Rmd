@@ -1,0 +1,155 @@
+---
+title: "Maths Linear Alg"
+output: html_document
+date: "2024-10-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+D <-matrix(c(1, 3, 4, 5, 9, 2), nrow = 6, ncol = 2, byrow = FALSE)
+A - B #subtract both matrices of same dimension
+A + B #add both matrices of same dimension
+A + D #add matrices of different dimensions will not work
+A * B
+A %*% B
+A %*% C
+C %*% A
+A %*% D
+knitr::opts_chunk$set(echo = TRUE)
+A %*% D # will not work because they are 2x3 and 6x2
+x %*% A #can't use matrix rule to multiply as 3x1 and 2x3
+A %*% x #can use matrix rule to multiply so 2x3 and 3x1
+# Creating matrices
+A1 <- matrix(c(1:9),nrow = 3)
+A2 <- matrix(c(1, 3, 4, 6, 9, 2, 1, 0, 3),nrow = 3)
+# Creating vectors
+v1 <- c(0, 1, 1)
+v2 <- c(2, 1, 0)
+v3 <- c(3, 1, 1)
+x1 <- c(1, 2, 0, 1)
+x2 <- c(2, 3, 1, 1)
+x3 <- c(4, 1, 2, 0)
+# Another way to create matrices
+B1 <- cbind(v1, v3, v2)
+B2 <- rbind(v1, v2, v3)
+# Creating matrices
+A1 <- matrix(c(1:9),nrow = 3)
+A2 <- matrix(c(1, 3, 4, 6, 9, 2, 1, 0, 3),nrow = 3)
+# Creating vectors
+v1 <- c(0, 1, 1)
+v2 <- c(2, 1, 0)
+v3 <- c(3, 1, 1)
+x1 <- c(1, 2, 0, 1)
+x2 <- c(2, 3, 1, 1)
+x3 <- c(4, 1, 2, 0)
+# Another way to create matrices
+B1 <- cbind(v1, v3, v2)
+B2 <- rbind(v1, v2, v3)
+B1
+B2
+# Creating matrices
+A1 <- matrix(c(1:9),nrow = 3)
+A2 <- matrix(c(1, 3, 4, 6, 9, 2, 1, 0, 3),nrow = 3)
+# Creating vectors
+v1 <- c(0, 1, 1)
+v2 <- c(2, 1, 0)
+v3 <- c(3, 1, 1)
+x1 <- c(1, 2, 0, 1)
+x2 <- c(2, 3, 1, 1)
+x3 <- c(4, 1, 2, 0)
+# Another way to create matrices
+B1 <- cbind(v1, v3, v2) #combine each vector and put them in columns with vectorname as header
+B2 <- rbind(v1, v2, v3) #combine each vector and put them in rows with vectorname as header
+B1
+B2
+A1 + A2
+A1 * A2
+A1 - A2
+t(A1)
+t(B2)
+A1 + A2
+# Creating matrices
+A1 <- matrix(c(1:9),nrow = 3)
+A2 <- matrix(c(1, 3, 4, 6, 9, 2, 1, 0, 3),nrow = 3)
+# Creating vectors
+v1 <- c(0, 1, 1)
+v2 <- c(2, 1, 0)
+v3 <- c(3, 1, 1)
+x1 <- c(1, 2, 0, 1)
+x2 <- c(2, 3, 1, 1)
+x3 <- c(4, 1, 2, 0)
+# Another way to create matrices
+B1 <- cbind(v1, v3, v2) #combine each vector and put them in columns with vectorname as header
+B2 <- rbind(v1, v2, v3) #combine each vector and put them in rows with vectorname as header
+A1
+A2
+B1
+B2
+A1 + A2
+A1 * A2
+A1 - A2
+t(A1)
+t(B2)
+A1 + A2
+A1 * A2
+A1 * A2
+t(A1)
+A1 * A2
+A1 - A2
+t(B2)
+solve(A1) #gives inverse of the matrix
+solve(A2)
+nrom(A1, type="2")
+norm(A1, type="2")
+sum(A1*A1)
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(ggplot2)
+library(tidyverse)
+options(bitmapType='cairo')
+rm(list=ls())
+?mtcars
+head(mtcars) #mtcars is an inbuilt dataset in r
+dim(mtcars)
+cars_pca <- prcomp(mtcars, center = TRUE, scale = TRUE)
+pca_summary
+cars_pca <- prcomp(mtcars, center = TRUE, scale = TRUE)
+pca_summary <- summary(cars_pca)
+pca_summary
+pca_df <- data.frame(cars_pca$x, make = stringr::word(rownames(mtcars), 1))
+ggplot(pca_df, aes(x = PC1, y = PC2, col = make)) +
+geom_point(size = 3) +
+labs(x = "PC1 60.08%",
+y = "PC2 24.09 %",
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

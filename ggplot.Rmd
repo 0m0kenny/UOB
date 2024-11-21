@@ -1,0 +1,209 @@
+---
+title: "ggplot"
+output: html_document
+date: "2024-10-25"
+---
+
+
+
+
+#Exercise 1 – Simple point and line plots
+##1. Install (using install.packages()) and load (using library()) the gapminder data.
+Load the ggplot2 library
+
+
+```{r}
+install.packages("gapminder")
+library(gapminder)
+library(ggplot2)
+options(bitmapType='cairo')
+rm(list=ls())
+```
+
+##2. Draw a scatter plot of the life expectancy (lifeExp, y) against GDP per capita
+(gdpPercap, x), using the geom_point() geometry
+
+```{r}
+ggplot(gapminder, aes(x=gdpPercap, y =lifeExp)) + geom_point()
+
+```
+##3. Change the point colours to “darkblue”, and increase the point size to 5
+
+```{r}
+ggplot(gapminder, aes(x=gdpPercap, y =lifeExp)) + geom_point(colour= "darkblue", size =5)
+```
+##5. Change the point colours to colour by continent (continent), and the size of
+the dots to reflect the population size (pop).
+
+```{r}
+ggplot(gapminder, aes(x=gdpPercap, y =lifeExp)) + geom_point(aes(colour= continent, size =pop)) #use aesthetics because you are using variable from dataset to categorise your data so will be included in the legend
+```
+
+###5. Draw the same plot using the geom_line() geometry, and compare the plots.
+```{r}
+
+ggplot(gapminder, aes(x=gdpPercap, y =lifeExp)) + geom_line(aes(colour= continent, size =pop))
+```
+
+##6. Draw a line graph of life expectancy (x) against GDP per capita (y), splitting the
+continents by colour. Use the size attribute to make the lines thicker.
+
+
+```{r}
+ggplot(gapminder, aes(x=lifeExp, y =gdpPercap)) + geom_point(aes(colour= continent), size=5) #size outside of the aesthetic because its not a variable so no need to be included in the legend
+```
+#Exercise 2 – Barplots and distributions
+
+##1. We will continue using the gapminder data.
+
+##2. Plot a stripchart of the life expectancy separately for the different
+continents. Remember to set the height attribute to 0, not to randomize
+the points in the y direction. Change the width of the jitter to better
+separate the plots
+
+```{r}
+ggplot(gapminder, aes(x=continent, y =lifeExp)) + geom_jitter(aes(colour= continent), size=5, height=0, width=0.2)
+```
+
+##3. Plot the same, using violinplot or boxplot. Colour by the continent, trying
+the col and fill parameters
+
+```{r}
+ggplot(gapminder, aes(x=continent, y =lifeExp)) + geom_violin(aes(colour= continent, fill =  continent), size=5,)
+```
+
+##4. Plot the distribution of life expectancy, using the geom_histogram() or
+geom_density() geometries. Change the binwidth attribute of
+geom_histogram() and explore the effect of this parameter
+
+```{r}
+ggplot(gapminder, aes(lifeExp)) + geom_density( size=5)
+ggplot(gapminder, aes(lifeExp)) + geom_histogram(colour = "blue", fill= "blue", size=1, binwidth=1)
+```
+
+##5. Plot the density of life expectancy separately for the continents, using
+geom_density(). Try and compare both the col=continent and
+fill=continent aesthetic. Set the transparency of the plots with the alpha
+attribute, and explore the effect of different values of alpha.
+
+```{r}
+ggplot(gapminder, aes(lifeExp)) + geom_density( aes(colour= continent), size=1)
+ggplot(gapminder, aes(lifeExp)) + geom_density(aes(fill= continent), size=0.2, aplha =0.2)
+```
+#Exercise 3 – Annotation, scaling and colours
+
+##1. Replot some of your earlier graphs using theme_bw() ggplot theme with a
+parameter of base_size=12 and see how their appearance changes.
+
+```{r}
+ggplot(gapminder, aes(lifeExp)) + geom_density(aes(fill= continent), size=0.2, aplha =0.2)+ theme_bw(base_size = 12)#base size changes the size of the text in the graph
+ggplot(gapminder, aes(x=lifeExp, y =gdpPercap)) + geom_point(aes(colour= continent), size=5) + theme_bw(base_size = 12) 
+```
+
+##2. Plot a scatterplot of the life expectancy vs GDP per capita, using
+geom_point()
+
+##3. Change the axis labels and add a suitable title for the plot. Reposition the
+title using the hjust attribute
+
+```{r}
+ggplot(gapminder, aes(x=lifeExp, y =gdpPercap)) + geom_point(aes(colour= continent), size=2) + labs(title= "Life Expectancy vs GDP per Capital", x ="Life Expectancy", y ="GDP Per Capital")  +theme(plot.title=element_text(hjust=0.5)) #the labs()function adds the chart title towards the left so use theme(plot.title hjust to shift to right)
+```
+##4. The GDP per capita is better displayed on the log axis. Redraw the life
+expectancy vs GDP per capita plot, implementing the following:
+
+1. Turn the axis into a log scale using scale_x_log10().
+
+2. Modify the data using the aesthetic mapping while plotting, using log10(gdpPercap).
+
+3. Use mutate() to manipulate the original data before passing it to ggplot
+
+```{r}
+ggplot(gapminder, aes(x=gdpPercap, y =lifeExp)) + geom_point(aes(colour= continent), size=2) + labs(title= "Life Expectancy vs GDP per Capital", y ="Life Expectancy", x ="GDP Per Capital")  +theme(plot.title=element_text(hjust=0.5)) + scale_x_log10()
+
+ggplot(gapminder, aes(x=log(gdpPercap), y =lifeExp)) + geom_point(aes(colour= continent), size=2) + labs(title= "Life Expectancy vs GDP per Capital", y ="Life Expectancy", x ="GDP Per Capital")  +theme(plot.title=element_text(hjust=0.5)) 
+
+library(tidyverse) #need tidyverse to use the mutate() function
+
+gapminder %>% mutate(log_gdpPercap = log(gdpPercap)) %>% ggplot(aes(x=log_gdpPercap, y =lifeExp)) + geom_point(aes(colour= continent), size=2) + labs(title= "Life Expectancy vs GDP per Capital", y ="Life Expectancy", x ="GDP Per Capital")  +theme(plot.title=element_text(hjust=0.5)) #pipe gapminder dataset into the mutate function to mutate the gdppercap into a log then the mutated gapminder is piped into ggplot and the new x will be the new mutated gdppercap which is log_gdppercap. Remember functions being piped into doesn't need the dataset anymore as it will be used from piped data.
+```
+##5. Colour the plot by continent, and change the colours to use the ColorBrewer
+“Set1” palette.
+
+
+```{r}
+library(RColorBrewer) #need this package to allow colorbrewer() function to work
+ggplot(gapminder, aes(x=gdpPercap, y =lifeExp)) + geom_point(aes(colour= continent), size=2) + labs(title= "Life Expectancy vs GDP per Capital", y ="Life Expectancy", x ="GDP Per Capital")  +theme(plot.title=element_text(hjust=0.5)) + scale_x_log10()+ scale_color_brewer(palette="Set1") #uses a preset colour combination
+```
+#Exercise 4 – Summary overlays
+##1. From the gapminder data, plot a stripchart of the life expectancy for each
+continent, using geom_jitter(). Make sure you set height = 0
+
+2. Overlay a boxplot of the same data on top of the stripchart.
+  1. Change the width of the jitter to better separate the plots.
+
+  2. Adjust the size of the lines of the boxplot.
+
+  3. Make sure the ordering of the stripchart and boxplot is correct so that both are
+visible. Use the transparency parameter alpha if necessary.
+  
+  4. Add axis labels and a title.
+
+  5. Try colouring the boxes or the points by continent to see if it makes the plot
+clearer
+
+```{r}
+ggplot(gapminder, aes(x=continent, y =lifeExp)) + geom_boxplot(aes(colour= continent, fill=continent), alpha = 0.5) +geom_jitter(aes(colour= continent), size=2, height=0, width=0.2, alpha = 0.5) + labs(title = "Life Expectancy Per Continent", x = "Continent", y = "Life Expectancy") + theme(plot.title =element_text(hjust=0.5) )
+# order of combination matters as data represented slighlty different so make sure you know which order you want  
+ggplot(gapminder, aes(x=continent, y =lifeExp)) +  geom_jitter(aes(colour= continent), size=2, height=0, width=0.2, alpha = 0.5) + geom_boxplot(aes(colour= continent, fill=continent), alpha = 0.5)+ labs(title = "Life Expectancy Per Continent", x = "Continent", y = "Life Expectancy")+theme(plot.title =element_text(hjust=0.5) )
+```
+
+##3. Plot the same data as a barplot (geom_bar()) overlaying the summary
+statistics (stat_summary()).
+
+  1. For the geom_bar(), use stat = “summary”.
+  
+  2. For the summary statistics, use “errorbar” as the geometry, and leave mean_se at
+its default value.
+
+```{r}
+ggplot(gapminder, aes(x=continent, y =lifeExp))  +geom_jitter(aes(colour= continent), size=2, height=0, width=0.2, alpha = 0.5) +geom_bar(stat="summary", fun=mean, aes(colour=continent, fill=continent),alpha = 0.5, width = 0.5)+ labs(title = "Life Expectancy Per Continent", x = "Continent", y = "Life Expectancy") + theme(plot.title =element_text(hjust=0.5) ) +stat_summary(geom="errorbar", width =0.4)
+```
+#Exercise 5: Faceting
+1. Subset the gapminder data to continents other than Oceania using the subset() command of tidyverse.
+
+2. Plot the density of life expectancy.
+
+3. Facet by continent.
+
+4. Colour the curves by year, using a colouring palette of your choice. You might have to turn the year to factors (factor(year)) when passing it as the fill colour to the aesthetics. Remember to set the transparency so that allcurves are visible.
+
+5. Add suitable axis labels and a title, and set a theme of your choice
+
+```{r}
+
+gapminderless <- subset(gapminder, continent != "Oceania")
+
+ggplot(gapminderless, aes(lifeExp)) + geom_density(aes(fill= factor(year)), alpha = 0.2, linewidth=0.2) + facet_wrap(. ~ continent)+ theme_dark()+  labs(title = "Life Expectancy Per Continent per year", x = "Life Expectancy", y = "Density") + theme(plot.title =element_text(hjust=0.5) )
+
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

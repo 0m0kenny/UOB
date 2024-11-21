@@ -1,0 +1,1037 @@
+---
+title: "Linear Regression"
+output: html_document
+date: "2024-10-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#10 Linear regression
+In this practical you will go through some of the basics of linear modelling in R as well as simulating data. The practical contains the following elements:
+
+-simulate linear regression model
+-investigate parameters
+-characterize prediction accuracy
+-correlation of real world data
+
+We will make use of the following packages reshape2, ggplot2, and bbmle packages. If you are using your own machine you can use the install.packages() function to install them. Only do that once you have confirmed they are not already installed.
+
+
+```{r}
+
+library(readr)
+library(ggplot2)
+library(tidyverse)
+library(reshape2)
+library(bbmle)
+options(bitmapType='cairo')
+rm(list=ls())
+
+```
+10.2 Simulating data for regression
+
+You will simulate data based on the simple linear regression model:
+
+yi=β0+β1xi+ϵi, where (xi,yi) represent the i-th measurement pair with i=1,…,N, β0 and β1 are regression coefficients representing intercept and slope respectively. 
+
+We assume the noise term ϵi∼N(0,σ2) is normally distributed with zero mean and variance σ2. 
+
+{-} First we define the values of the parameters of linear regression (β0,β1,σ2).
+
+In the next step we will simulate N=100 covariates xi by randomly sampling from the standard normal distribution.
+
+Next we simulate the error term.
+
+Finally we have all the parameters and variables to simulate the response variable y.
+
+```{r}
+b0 <- 10 # regression coefficient for intercept
+b1 <- -8 # regression coefficient for slope
+sigma2 <- 0.5 # noise variance
+
+set.seed(198) # set a seed to ensure data is reproducible- so will generate the same random no each time. can give any no in bracket
+
+N <- 100 # no of data points to simulate
+x <- rnorm(N, mean = 0, sd = 1) # simulate covariate/feature x- randomly generate 100 numbers with a normal dist x~N(0,1)
+
+e <- rnorm(N, mean = 0, sd = sqrt(sigma2)) # simulate the noise terms, rnorm requires the standard deviation so squaroot variance(sigma2)
+
+y <- b0 + b1 * x + e # compute the response variable (dependent variable y) equation of
+
+```
+
+We will plot our data using ggplot2 so the data need to be in a data.frame object.
+```{r}
+b0 <- 10 
+b1 <- -8 
+sigma2 <- 0.5 
+
+set.seed(198) 
+
+N <- 100 
+x <- rnorm(N, mean = 0, sd = 1) 
+
+e <- rnorm(N, mean = 0, sd = sqrt(sigma2)) 
+y <- b0 + b1 * x + e  
+
+sim_data <- data.frame(x = x, y = y) # create a dataframe of all x and y given so n=100
+
+
+ggplot(sim_data, aes(x = x, y = y)) + geom_point() # create a new scatter plot using ggplot2
+  
+```
+We define the true data 'y_true' to be the true linear relationship between the covariate and the response without the noise. 
+
+then we will add the true values of y to the scatter plot:
+
+```{r}
+b0 <- 10 
+b1 <- -8 
+sigma2 <- 0.5 
+
+set.seed(198) 
+
+N <- 100 
+x <- rnorm(N, mean = 0, sd = 1) 
+
+e <- rnorm(N, mean = 0, sd = sqrt(sigma2)) 
+y <- b0 + b1 * x + e  
+
+sim_data <- data.frame(x = x, y = y)
+
+y_true <- b0 + b1 * x 
+
+
+sim_data$y_true <- y_true #Add the data to the existing data frame as an extra column
+
+ggplot(sim_data, aes(x = x, y = y)) + 
+  geom_point() +
+  geom_point(aes(x = x, y = y_true), colour = "red") #plot the graph but overlay the y-true as a line graph using geomline and setting the x and y axis as y-true
+
+```
+10.3 Fitting simple linear regression model
+
+10.3.1 Least squared estimation
+
+Now that you have simulated data(random x from rnorm), you can use it to regress y on x, since this is simulated data we know the parameters and can make a comparison. 
+
+In R we can use the function lm() for this, by default it implements a least squares estimate
+
+The output for lm() is an object (in this case ls_fit) which contains multiple variables. To access them there are some built in functions, e.g. coef(), residuals(), and fitted(). We will explore these in turn.
+
+```{r}
+
+ls_fit <- lm(y ~ x, data = sim_data) # Use the lm function to fit the data and perform least squares estimate
+
+summary(ls_fit) # Display a summary of fit- gives info on the residuals, coefficients
+
+ls_coef <- coef(ls_fit) # Extract estimated coefficients as a named vector
+
+b0_hat <- ls_coef[1] # extract intercept b0_hat (hat is ^ which means estimated) - an alternative way is using  ls_fit$coefficients[1]
+b1_hat <- ls_coef[2] # extract the slope b1 -alternative is ls_fit$coefficients[2]
+
+
+y_hat <- b0_hat + b1_hat * x  # Generate the predicted data based on estimated parameters
+sim_data$y_hat <- y_hat # add y-hat to the existing sim data data frame as a new column
+
+
+ggplot(sim_data, aes(x = x, y = y)) +
+  geom_point() +
+  geom_line(aes(x = x, y = y_true), colour = "red", size = 1.3) +
+  # plot predicted relationship in blue
+  geom_line(aes(x = x, y = y_hat), colour = "blue") # Create scatter plot and lines for the original and fitted
+```
+
+The estimated parameters and the plot shows a good correspondence between fitted regression parameters and the true relationship between y and x. 
+
+We can check this by plotting the residuals, this data is stored as the residuals parameter in the ls_fit object. 
+can plot the residuals on a scatter plot and in an histogram which is a better way to visualise.
+
+We expect the mean and variance of the residuals to be close to the level used to generate the data.
+
+This is as expected since subtracting a good fit from the data leaves ϵ which has 0 mean and 0.5 variance.
+
+```{r}
+
+ls_residual <- residuals(ls_fit) # extract the residual can also be accessed via ls_fit$residuals
+
+
+plot(ls_residual) # scatter plot of residuals
+hist(ls_residual) #histogram of the residuals 
+mean(ls_residual)
+var(ls_residual)
+```
+
+10.3.2 Maximum likelihood estimation
+
+Next you will look at maximum likelihood estimation based on the same data you simulated earlier. This is a bit more involved as it requires you to explicitly write the function you wish to minimise.
+
+The function we use is part of the bbmle package.
+
+The estimated parameters using the maximum likelihood are also a very good estimate of the true values.
+```{r}
+
+# function that will be minimised. It takes as arguments all parameters
+# Here we are helped by the way R works we don't have to explicitly pass x.
+# The function will use the existing estimates in the environment
+
+mle_ll <- function(beta0, beta1, sigma) {
+  # first we predict the response variable based on the guess for our response
+  y_pred = beta0 + beta1 * x #x is the random no generated at beginning
+
+  # next we calculate the normal distribution based on the predicted value then guess for sigma and return the log
+  log_lh <- dnorm(y, mean = y_pred, sd = sigma, log = TRUE) #the mean is the y_pred because y given x: y|x = x,B0,b1,sigma2 part of normal distribution of N (b0+b1x, sigma2). so the mean is b0+b1x which is y_pred. look at max likelihood estimate slide
+
+  return(-sum(log_lh)) #  We return the negative sum of the log likelihood
+}
+
+# This is the function that actually performs the estimation
+# The first variable here is the function we will use
+# The second variable passed is a list of initial guesses of parameters
+mle_fit <- mle2(mle_ll, start = list(beta0 = -1, beta1 = 20, sigma = 10)) #mle2 function performs the max likelihood estimate
+
+# With the same summary function as above we can output a summary of the fit
+summary(mle_fit)
+
+```
+
+10.4 Effect of variance
+
+Now investigate the quality of the predictions further by simulating more data sets and seeing how the variance affects the quality of the fit as indicated by the mean-squared error (mse).
+
+To start you will define some parameter for the simulations, the number of simulations to run for each variance, and the variance values to try.
+
+```{r}
+
+n_simulations <- 100 # number of simulations for each noise level
+
+sigma_v <- c(0.1, 0.4, 1.0, 2.0, 4.0, 6.0, 8.0) # A vector of noise levels to try
+n_sigma <- length(sigma_v)
+
+mse_matrix <- matrix(0, nrow = n_simulations, ncol = n_sigma) # Create a matrix to store results
+
+
+# name row and column
+rownames(mse_matrix) <- c(1:n_simulations) #name each row of the matrix by total no of simulations
+colnames(mse_matrix) <- sigma_v #name column of matrix as sigma_v
+```
+
+Next we will write a nested for loop. The first loop will be over the variances and a second loop over the number of repeats. We will simulate the data, perform a fit with lm(). We can use the fitted() function on the resulting object to extract the fitted values ^y and use this to compute the mean-squared error from the true value y
+.
+```{r}
+n_simulations <- 100 
+
+sigma_v <- c(0.1, 0.4, 1.0, 2.0, 4.0, 6.0, 8.0) 
+n_sigma <- length(sigma_v)
+
+mse_matrix <- matrix(0, nrow = n_simulations, ncol = n_sigma) 
+rownames(mse_matrix) <- c(1:n_simulations) 
+colnames(mse_matrix) <- sigma_v 
+
+
+for (i in 1:n_sigma) {
+  sigma2 <- sigma_v[i] #sigma2 in each iteration corresponds to the index of sigmav 
+
+  # for each simulation
+  for (it in 1:n_simulations) {
+
+    # Simulate the data
+    x <- rnorm(N, mean = 0, sd = 1) #randmoly give x 100 times
+    e <- rnorm(N, mean = 0, sd = sqrt(sigma2)) #randmoly give e 
+    y <- b0 + b1 * x + e #then calculate the linear regression
+
+    # set up a data frame and run lm()
+    sim_data <- data.frame(x = x, y = y) #save each x and the corresponding y in a dat frame
+    lm_fit <- lm(y ~ x, data = sim_data) #create the least square estimate and fit the data
+
+    #compute the mean squared error between the fit and the actual ys
+    y_hat <- fitted(lm_fit) #fitted() function extracts fitted values from the linear regression model
+    mse_matrix[it, i] <- mean((y_hat - y)^2) # do mean((y_hat - y)^2) and store it in the coordinates which is the row in the matrix which corresponds to iteration of it, and iteration of i
+
+  }
+}
+ 
+```
+
+We created a matrix to store the mse values, but to plot them using ggplot2 we have to convert them to a data.frame. This can be done using the melt() function form the reshape2 library. We can compare the results using boxplots.
+
+You can see that the variances of the mse and the value of the mse go up with increasing variance in the simulation.
+
+
+```{r}
+n_simulations <- 100 
+
+sigma_v <- c(0.1, 0.4, 1.0, 2.0, 4.0, 6.0, 8.0) 
+n_sigma <- length(sigma_v)
+
+mse_matrix <- matrix(0, nrow = n_simulations, ncol = n_sigma) 
+rownames(mse_matrix) <- c(1:n_simulations) 
+colnames(mse_matrix) <- sigma_v 
+
+
+for (i in 1:n_sigma) {
+  sigma2 <- sigma_v[i] 
+
+  for (it in 1:n_simulations) {
+
+    x <- rnorm(N, mean = 0, sd = 1) 
+    e <- rnorm(N, mean = 0, sd = sqrt(sigma2)) 
+    y <- b0 + b1 * x + e 
+
+    sim_data <- data.frame(x = x, y = y) 
+    lm_fit <- lm(y ~ x, data = sim_data) 
+    y_hat <- fitted(lm_fit) 
+    mse_matrix[it, i] <- mean((y_hat - y)^2) 
+
+  }
+}
+
+
+mse_df <- melt(mse_matrix) # convert the matrix into a data frame for ggplot2 using melt() function
+mse_matrix
+names(mse_df) <- c("Simulation", "variance", "MSE") # combines the sigmav column into one and name it variance then their corresponding data will be MSEand the corresponding no of simulations (first column denoting row names will be called simulation)
+mse_df
+# now use a boxplot to look at the relationship between mean-squared prediction error and variance
+ggplot(mse_df, aes(x = variance, y = MSE)) +
+  geom_boxplot(aes(group = variance))
+
+```
+
+What changes do you need to make to the above function to plot the accuracy of the estimated regression coefficients as a function of variance?
+
+```{r}
+```
+
+
+10.5 Exercise I: Correlation
+Read in the data in stork.txt, compute the correlation and comment on it.
+
+The data represents no of storks (column 1) in Oldenburg Germany from 1930−1939 and the number of people (column 2).
+
+```{r}
+stork_df <-read.table("stork.txt", header = T) #read the file and turn it into a table. header set to true because the first row contains the names of the columns
+
+n <- nrow(stork_df)
+x <- stork_df$no_storks
+y <- stork_df$people
+x_sum <- sum(x) #can work out everything towrds the equation found in notes for correlation coefficient (r)
+y_sum <- sum(y)
+xx_sum <- sum(x^2)
+yy_sum <- sum(y^2)
+xy_sum <- sum(x*y)
+
+top_r <-  xy_sum - 1/n * x_sum * y_sum #top equation
+bottom_r <- sqrt(xx_sum - 1/n * x_sum^2 ) * sqrt(yy_sum - 1/n * y_sum^2 ) #bottom equation
+
+r <- top_r/bottom_r
+r
+
+#or can use cor() function
+cor(x,y)
+
+
+ggplot(stork_df, aes(x = x, y = y)) +
+  geom_point(size = 2)
+```
+
+10.6 Exercise II: Linear Regression
+
+Fit a simple linear model to the two data sets supplied (lr_data1.Rdata and lr_data2.Rdata). In both files the (x,y) data is saved in two vectors, x and y.
+
+Download the data (see above), you can read it into R and plot it with the following commands:
+
+```{r}
+load("lr_data1.Rdata") #since the file is in .Rdata form, can just load it directly into R
+lr_data1 <- data.frame(x=x, y=y)
+plot(x, y) #plot a scatter plot of the data to make sure they are linear
+
+load("lr_data2.Rdata")
+plot(x, y)
+lr_data2 <- data.frame(x=x, y=y)
+
+lr_fit1 <- lm(y ~ x, data = lr_data1)
+lr_fit2 <- lm(y ~ x, data = lr_data2)
+
+summary(lr_fit1) #b0 is intercept, b1 is x
+summary(lr_fit2)
+
+ggplot(lr_data1, aes(x = x, y = y)) +
+  geom_point() +
+  geom_point(data=lr_data2, aes(x = x, y = y), colour = "red", shape = 1.3)# Create scatter plot for both data (must use data= in 2nd geom point otherwise error) 
+
+
+```
+From the summary data we can see a discrepancy between the two estimates in the regression coefficients (≈1), though the error in the estimate is quite large. The other thing to notice is that the summary of the residuals look quite different. If we investigate further and plot them we see:
+
+Here we can once again see the outliers in the second data set which affect the estimation. We now plot the histogram and boxplots for comparison.
+
+Here we can see that the distribution of the residuals has significantly changed in data set 2.
+
+A change in only 4 data points was sufficient to change the regression coefficients.
+```{r}
+plot(residuals(lr_fit1)) #plot the residuals
+plot(residuals(lr_fit2))
+hist(residuals(lr_fit1))
+hist(residuals(lr_fit2))#plot histogram of residuals
+boxplot(residuals(lr_fit2), residuals(lr_fit1)) #plot box plot of residuals
+```
+10.7 Exercise III: Linear Regression
+
+Investigate how the sample size will affect the quality of the fit using mse, use the code for investigating the affect of variance as inspiration.
+
+You should see that the variance of the mean-squared error goes down as the sample size goes up and converges towards a limiting value. Larger sample sizes help reduce the variance in our estimators but do not make the estimates more accurate.
+
+Can you do something similar to work out the relationship between how accurate the regression coefficient estimates are as a function of sample size?
+
+```{r}
+b0 <- 10 # regression coefficient for intercept
+b1 <- -8 # regression coefficient for slope
+sigma2 <- 0.5 # noise variance
+
+# number of simulations for each sample size
+n_simulations <- 100
+
+# A vector of sample sizes to try
+sample_size_v <- c( 5, 20, 40, 80, 100, 150, 200, 300, 500, 750, 1000 )
+
+n_sample_size <- length(sample_size_v)
+
+# Create a matrix to store results
+mse_matrix <- matrix(0, nrow = n_simulations, ncol = n_sample_size)
+
+# name row and column
+rownames(mse_matrix) <- c(1:n_simulations)
+colnames(mse_matrix) <- sample_size_v
+
+# loop over sample size
+for (i in 1:n_sample_size) {
+  N <- sample_size_v[i]
+
+  # for each simulation
+  for (it in 1:n_simulations) {
+
+    x <- rnorm(N, mean = 0, sd = 1)
+    e <- rnorm(N, mean = 0, sd = sqrt(sigma2))
+    y <- b0 + b1 * x + e
+
+    # set up a data frame and run lm()
+    sim_data <- data.frame(x = x, y = y)
+    lm_fit <- lm(y ~ x, data = sim_data)
+
+    # compute the mean squared error between the fit and the actual y's
+    y_hat <- fitted(lm_fit)
+    mse_matrix[it, i] <- mean((y_hat - y)^2)
+
+  }
+}
+
+
+
+mse_df <- melt(mse_matrix) # convert the matrix into a data frame for ggplot
+names(mse_df) = c("Simulation", "Sample_Size", "MSE") # rename the columns
+
+# now use a boxplot to look at the relationship between mean-squared prediction error and sample size
+mse_plt = ggplot(mse_df, aes(x=Sample_Size, y=MSE))
+mse_plt = mse_plt + geom_boxplot( aes(group=Sample_Size) )
+print(mse_plt)
+```
+
+11 Multiple regression
+
+Previously we have only considered simple linear regression with one response variable and one feature. In this practical we will go through examples with multiple features: 
+
+           y=β+β1x1+β2x2+ϵ
+
+For this practical we will use data that is already inbuilt in R or is part of the MASS package. The only thing we need to do to make the data available is load the MASS package.
+
+```{r}
+library(MASS)
+
+```
+
+11.1 Multiple regression
+
+For this part we will use the inbuilt trees dataset containing Volume, Girth and Height data for 31 trees.
+
+First we revisit linear regression on this example, recall the function to fit a linear model lm(). Consider Volume to be the response variable and Girth to be the covariate.
+
+```{r}
+head(trees)
+lr_fit <- lm(Volume ~ Girth, data = trees)
+summary(lr_fit)
+```
+
+We will now consider a linear regression example with multiple covariates, Girth as well as Height. In this case of course we know that they are related so we do expect both covariates to be significant.
+
+Note, in the formula you only enter the covariates and not the regression coefficients or any information regarding the noise.
+
+Let us now look at RSS values, we can calculate the RSS for the lf_fit object by using sum(residuals(lr_fit)^2). We see that the RSS for initial Linear Regression = 524.3 and the RSS for this Multiple Rregression = 421.92. Therefore the fit has improved (as the sum or residuals is smaller in the multiple regression) but the regression coefficient for Height is very small and not significant.
+
+
+
+```{r}
+mr_fit <- lm(Volume ~ Girth + Height, data = trees)
+
+summary(mr_fit)
+sum(residuals(lr_fit)^2)
+sum(residuals(mr_fit)^2)
+
+
+```
+
+
+One reason for the small regresion coefficient for height is that in the relationship between Volume, Girth, and Height is not additive but rather Girth and Height are multiplied. Using the fact that log(a∗b)=log(a)+log(b) we can consider the log-transformed data in a linear model.
+
+Now we see that the regression coefficient is large and both covariates are significant. This shows that we need to ensure we understand the relationship between covariates before we construct our model.
+
+```{r}
+mrl_fit <- lm(log(Volume) ~ log(Girth) + log(Height), data = trees)
+
+summary(mrl_fit)
+
+```
+11.2 Categorical covariates
+
+NOTE
+
+In this section we will consider a dataset with a categorical covariate. We will use linear regression to explore the relationship between the response variable and the categorical covariate. This is a simple example to illustrate the interpretation of the coefficients in the model. This is not a general approach to using linear regression with categorical variables.
+
+Recall from the lecture that covariates don’t need to be numerical but can also be categorical. We will now explore regression with a categorical variable. Load a new dataset which is included in the MASS package, you won’t be able to load this dataset if package isn’t installed. Load the dataset explore what the data looks like.
+
+```{r}
+library(MASS)
+data("birthwt")
+
+head(birthwt)
+summary(birthwt)
+
+```
+
+
+We will give the data more interpretable names and generally cleanup the data a little bit.
+```{r}
+# rename columns
+data("birthwt")
+colnames(birthwt) <- c("bwt_below_2500", "mother_age", "mother_weight", "race", "mother_smokes", "previous_prem_labor", "hypertension", "uterine_irr", "physician_visits", "bwt_grams") #replaces each column name in the dataset with these
+
+birthwt$race <- factor(c("white", "black", "other")[birthwt$race]) #factor() in numerical order categorises the data in a column ([birthtwt$race]) using the new values in the list so starting from 1, unless specified otherwise the factor will assign the category in alphabetical order to each number in numerical order so 1 and will be black, 2 will be other and 3 will be white Need to know how many no there are to be able to categorise each. Then once thats done it replaces the column specified (birthtwt$race<-) with the new categories. Make sure both columns have similar number pattern. unless specified otherwise the factor will assign the category in alphabetical order to each number in numerical order so 1 and will be black, 2 will be other and 3 while be white. 
+
+birthwt$mother_smokes <-factor(c("No","Yes")[birthwt$mother_smokes + 1]) #add +1 because the data for smoke is 0,1 and R does not know how to compute 0 so add 1 to make all 0 turn to 1 and all1 turn to 2 then categorise this way. so in alphanumeric order No will be 1 which was 0 and Yes will be 2 which was previously 1.
+
+birthwt$uterine_irr <- factor(c("No", "Yes")[birthwt$uterine_irr + 1])
+birthwt$hypertension <- factor(c("No", "Yes")[birthwt$hypertension + 1])
+
+ggplot(birthwt, aes(x = mother_smokes, y = bwt_grams)) + #plot a boxplot of mother smoking vs birthweight
+    geom_boxplot() +
+    labs(title = "Data on baby births in Springfield (1986)",
+         x = "Does the mother smoke?",
+         y = "Birth-weight [grams]")
+
+ggplot(birthwt, aes(x = mother_age, y = bwt_grams, col = mother_smokes)) +
+    geom_point()
+
+```
+Now we perform linear regression using the categorical variable, it is no different than performing linear regression on numeric data. The difference is in interpretation.
+
+```{r}
+
+bwt_fit <- lm(bwt_grams ~ mother_smokes, data = birthwt) #using d=1 as R will never show the d=0 since its the same as the intercept
+
+summary(bwt_fit)
+```
+When you put a categorical variable in the formula for lm as in this case bwt_grams ~ mother_smokes where we have two levels in the categorical variable. If we consider this model as 
+               y=β0+β1x+ϵ
+ The coefficients in the model can be interpreted as follows:
+- β0 is average birth weight where the mother was a non smoker
+
+- β0+β1 is the average birth weight where the mother is a smoker
+
+- β1 is the average difference in birth weight for babies between mother that were smokers and mothers that were non smokers.
+ 
+Categorical variables can also have more than two levels and in those cases each additional level can be interpreted in the same way.
+
+We have used linear regression for this but in general we don’t want to use simple linear regression for categorical variables, you can convince yourself that this is the case by plotting the data. We use this simple example to highlight the different interpretation of the coefficients.
+
+
+
+
+11.3 Residuals
+Recall from the lectures the residuals are the differences between the observed data y and the fitted values ^y. 
+
+One of the assumptions we make in the simple linear regression model is that the residuals should be normally distributed. To extract residuals from an lm object we will use the residuals() function.
+
+Even if we consider that these residuals look like they are normally distributed we need to get better understanding of this we will use the Q-Q Plot. You can take a look at the wiki to get a better understanding (Q–Q plot - Wikipedia). 
+
+In simple terms if the residuals are normally distributed we expect them to be on the diagonal straight line on a Q-Q plot. The simplest way to get such a plot is using the plot() function and specifically for an lm object it has an option which = that takes a numeric value depending on which plot you want to plot.
+
+As we can see in this example the residuals are very close to normal with some outliers especially towards larger values of the residual. This would indicate that the model as it stands does not fulfil that assumption fully but comes close.
+
+
+```{r}
+residuals_df <- data.frame(resid = residuals(bwt_fit)) #extract the residuals from the linear regression
+
+ggplot(residuals_df, aes(x = resid)) +
+    geom_histogram(bins = 10)
+
+plot(bwt_fit, which = 2) #plots the residuals from the linear model which is no 2 -use plot.lm on help section to find info on other numbers and what will be plotted
+```
+
+11.4 Gradient descent algorithm (+)
+
+Finally, in todays practical we will implement the gradient descent algorithm which we discussed in the lecture. This is a slightly tricker practical, try to implement the algorithm yourself before looking at the full details.
+
+For simplicity we will only consider the case with one covariate. In this section we will use simulated data and compare the results with lm(). The model we will simulate from is:
+
+     y=2+3x+ϵ
+ 
+```{r}
+set.seed(200)
+
+n_sample <- 1000
+
+# We sample x values from a uniform distribution in the range [-5, 5]
+x <- runif(n_sample, -5, 5)
+
+# Next we compute y
+y <- 3 * x + 2 + rnorm(n = n_sample, mean = 0, sd = 1) #rnorm gives random e noise with normal dist. for each x
+
+sim_df <- data.frame(x = x, y = y) #put all x and y into a data frame
+
+ggplot(sim_df, aes(x = x, y = y)) +
+    geom_point()
+
+```
+
+Recall that in gradient descent we want to minimise the Mean Squared Error (J(β)) which is the cost function. The first step is to write this cost function in R. For simplicity we will use matrix multiplication, which in R is implemented as %*%. 
+
+(Note, to get help on these function with special characters you can’t simply run the command ?%*% instead you have to put it in quotes ?"%*%".)
+
+To perform an optimisation we will have to initialise parameters, in general optimisation algorithms won’t always produce the same results for all choices of initialisations
+```{r}
+cost_fn <- function(X, y, coef) { 
+    sum( (X %*% coef - y)^2 ) / (2*length(y)) #equation for MSE or cost function using minus y instead of y minus because its predicted minus actual rather than actual minus predicted which is still the same thing
+}
+
+# First we set alpha and the number of iterations we will perform
+alpha <- 0.2 #part of variable needed for gradient descent - learning rate which is size of each update
+num_iters <- 100  #part of variable needed for gradient descent -check notes
+
+# next we will initialise regression coefficients
+coef <- matrix(c(0,0), nrow=2) #create a matrix with values 0,0 in 2 rows only
+coef
+X <- cbind(1, matrix(x)) #combine the value 1 in first column in a new matrix with the random numbers generated in x as the 2nd column
+
+res <- vector("list", num_iters) #create a vector as a list of all the numbers iterated so 1-100
+
+```
+We now write a for loop to compute the optimisation, where we store the full history of the opmtimisation.
+
+We created a list to store results res it is possible to combine all results into a simple data.frame using the bind_rows() function from the dplyr package. If we look at the final values in the resulting variable we will
+
+We can see that β0=2 and β1=3 are reproduced faithfully. There are a few ways to visualise the optimisation. We can look at the convergence of the parameters, the cost function itself or even the estimated y at each step of the optimisation.
+
+```{r}
+cost_fn <- function(X, y, coef) { 
+    sum( (X %*% coef - y)^2 ) / (2*length(y)) 
+}
+
+
+alpha <- 0.2 
+num_iters <- 100  
+
+coef <- matrix(c(0,0), nrow=2) 
+
+X <- cbind(1, matrix(x)) 
+
+res <- vector("list", num_iters) 
+
+for (i in 1:num_iters) { #for each iteration 
+  error <- (X %*% coef - y) #calculate the noise by multiplying each x in the matrix x by the coefficient matrix and minusing y
+  delta <- t(X) %*% error / length(y) #find delta
+  coef <- coef - alpha * delta #change coef and store as new coeff 
+  res_df <- data.frame(itr = i , cost = cost_fn(X, y, coef),
+                   b0 = coef[1], b1 = coef[2]) #create a dataframe itr column is each iteration, the cost column is working out the cost function, b0 is first row of coeff and b1 is 2nd row of coeff
+
+  res[[i]] <- res_df #store the dataframe into the res vector using the iteration as the index possition- this will return each res_df as a new datatframe for each iteration
+}
+
+library(dplyr)
+res_df <- bind_rows(res) #combine each individual dataframe in res into one single dataframe as rows
+tail(res_df)
+
+ggplot(res_df, aes(x = itr, y = b1)) + #plot the iteration and b1 that was guessed at each iteration
+    geom_line() +
+    labs(x = "Iteration",
+         y = "Estimated beta_1",
+         title = "Visuaslisation of the cconvergence of the beta_1 parameter")
+
+ggplot(res_df, aes(x = itr, y = cost)) +
+    geom_line() +
+    labs(x = "Iteration",
+         y = "Cost function",
+         title = "History of cost function at each iteration")
+
+ggplot(sim_df, aes(x = x, y = y)) + #plot the original data frame and each line of regression for each gradient descent iteration
+    geom_point(color = "red", alpha = 0.3) +
+    geom_abline(data = res_df, aes(intercept = b0, slope = b1),
+                alpha = 0.3, col = "darkgreen", size = 0.5) +
+    labs(x = "x", y = "y",
+         title = "Estimated response at each step during optimisation")
+
+
+```
+
+Now compare these results to the ones obtained by fitting a linear model in R using the function lm(), how different are the results.
+
+ 
+```{r}
+lr_sim<- lm(y~x, data = sim_df)
+
+summary(lr_sim)
+
+
+ls_coef <- coef(lr_sim) 
+
+b0_hat <- ls_coef[1] 
+
+b1_hat <- ls_coef[2] 
+
+
+y_hat <- b0_hat + b1_hat * x  
+sim_df$y_hat <- y_hat 
+
+
+ggplot(sim_df, aes(x = x, y = y)) +
+  geom_point(colour= "red", alpha = 0.3) +
+  geom_line(aes(x = x, y = y_hat), colour = "darkgreen") 
+
+
+```
+
+Try to reproduce these plots with α= (0.02, 0.1, 0.5), and different number of iterations in the optimisation and compare the estimated ^β0, and ^β1 to the values you use during the simulation step. This will give you an idea how important the right choice of these two parameters is.
+
+```{r}
+
+#haven't finished this
+cost_fn <- function(X, y, coef) { 
+    sum( (X %*% coef - y)^2 ) / (2*length(y)) 
+}
+
+
+alpha_v <- c(0.02, 0.1, 0.5) 
+num_iters <- 100  
+
+mse_matrix <- matrix(0, nrow = num_iters, ncol = length(alpha_v) 
+mse_matrix
+rownames(mse_matrix) <- c(1:num_iters) 
+colnames(mse_matrix) <- alpha_v 
+
+coef <- matrix(c(0,0), nrow=2) 
+
+X <- cbind(1, matrix(x)) 
+
+res <- vector("list", num_iters) 
+
+
+for (it in 1:length(alpha_v)) {
+  alpha <- alpha_v[it] 
+
+  for (i in 1:num_iters) { 
+    error <- (X %*% coef - y) 
+    delta <- t(X) %*% error / length(y) 
+    coef <- coef - alpha * delta 
+    res_df <- data.frame(itr = i , cost = cost_fn(X, y, coef),
+                     b0 = coef[1], b1 = coef[2]) 
+  
+    res[[i]] <- res_df 
+  }
+}
+
+library(dplyr)
+res_df <- bind_rows(res) 
+
+ggplot(res_df, aes(x = itr, y = b1)) + 
+    geom_line() +
+    labs(x = "Iteration",
+         y = "Estimated beta_1",
+         title = "Visuaslisation of the cconvergence of the beta_1 parameter")
+
+ggplot(res_df, aes(x = itr, y = cost)) +
+    geom_line() +
+    labs(x = "Iteration",
+         y = "Cost function",
+         title = "History of cost function at each iteration")
+
+ggplot(sim_df, aes(x = x, y = y)) + 
+    geom_point(color = "red", alpha = 0.3) +
+    geom_abline(data = res_df, aes(intercept = b0, slope = b1),
+                alpha = 0.3, col = "darkgreen", size = 0.5) +
+    labs(x = "x", y = "y",
+         title = "Estimated response at each step during optimisation")
+
+```
+
+13 Generalised Linear Models
+
+In a genome-wide association study, we perform an experiment where we select n individuals with a disease (cases) and n individuals without the diseases (controls) and look for genetic differences between these two groups. In particular, we are interested in specific genetic variants (SNPs) that might induce some predisposition towards the disease.
+
+Suppose I observe the following genotypes for a SNP in 4,000 individuals (2,000 cases, 2,000 controls):
+
+Genotypes: AA   Aa   aa
+Controls:  3   209  1788
+Cases:     83  621  1296
+
+The cases seem to have relatively more A alleles than the controls. This might make us suspect that having A alleles at this SNP is associated with the disease.
+
+This is the idea we will implement with data.
+
+13.2 Detecting SNP Associations
+
+We have seen in lectures that we can do statistical tests for this type of contingency table using Chi Squared Tests. Let’s load the example data set and prepare a loop to scan through all SNPs to find those that are associated with the disease.
+
+The first step is to load the data and check what the data looks like:
+
+```{r}
+library(ggplot2) 
+load("gwas-cc-ex1.Rdata")
+
+
+tmp = load("gwas-cc-ex1.Rdata") #store as a variable so that you can see details of the dataset
+tmp #gives you the variable names in the dataset 
+View(X) #opens the x variable in the dataset in new tab so you can see what type of data it is (look at variable in global environment too it should tell you) do the same for y too
+
+
+dim(X) #gives details on the no of rows and columns -so dimension of a matrix 
+
+
+
+n <- length(y) #  how many individuals are there
+
+p <- nrow(X) # How many SNPs do we have data for -checking no of rows in the x variable which is a matrix
+
+
+control <- which(y == 0) # samples that are controls are encoded as 0 in y -gives the index no of all positions in y that are 0
+control
+cases <- which(y == 1) # disease cases are encoded as 1 in y - gives the index no of all positions in y that are 1
+
+
+cat("No. of individuals: ", n ) #prints no of indivuals
+cat("No. of SNPs: ", p )
+cat("No. of controls: ", sum(control)) #sum all the index numbers in y =0 so controls
+cat("No. of cases: ", sum(cases)) #sum all the index number in y which are =1 so cases
+```
+
+Now we need to write a loop that scans through all, p, SNPs. Each SNP is a row in the matrix X. For each SNP we will perform a chi-squared test to see if the genotype distribution is different between cases and controls. This means we will create a contingency table for each SNP and perform a chi-squared test.
+
+```{r}
+
+p_vals <- rep(0, p) # create a vector where p-values will be stored. so using the length of p and initalise each element to 0
+
+# Loop over SNPs
+for (i_p in 1:p) {
+    # 1. obtain genotype counts
+    counts <- matrix(0, nrow = 2, ncol = 3) #creates a matrix with elements initialised to 0 with 2 rows and 2 columns
+    counts[1, ] <- c(sum(X[i_p, control] == 0), # in X matrix, at the position with coordinate (iteration row, control index1) , check if the value is 0, if it is return true then add up number of true over the iteration and add it at row 1 column 1 in counts matrix. It does each iteration for all index in control so [1,1],[1,2], until [1,4000] the go to 2,1 etc until [300,4000]. 0 in X represents AA genotype
+                     sum(X[i_p, control] == 1), #do the same and add to column2. 1 represents Aa
+                     sum(X[i_p, control] == 2)) #do the same and add to column3. 2 reprrsents aa
+
+    counts[2, ] <- c(sum(X[i_p, cases] == 0), #same in 2nd row but with indexes in cases
+                     sum(X[i_p, cases] == 1),
+                     sum(X[i_p, cases] == 2))
+
+    # 2. expected probability of AA
+    # (assuming no dependence on case/control status)
+    expected_pr_AA <- sum(counts[, 1]) / n #sum of values in all the rows in column 1/n which represents AA
+    # expected probability of Aa
+    expected_pr_Aa <- sum(counts[, 2]) / n
+    # expected probability of aa
+    expected_pr_aa <- sum(counts[, 3]) / n
+
+    expected_probs <- c(expected_pr_AA, expected_pr_Aa, expected_pr_aa ) 
+
+    # 3. do my chi-squared test to look at catergories in 3 genotypes and comparing controls to cases (checking difference between the 2) in chi squared lecture, we were comparing to observed to whats expected in a normal dist.
+    out <- chisq.test(counts, p = expected_probs) #use chisq.test() function on the counts matrix- it will calculate column by column 
+    # extract p value of test and store
+    p_vals[i_p] <- out$p.value # the chi square performed for each iteration so 300 times so extract the pvalues each time and save it in index position usinf iteration no inside p_vals vector initiated at the begining
+}
+
+```
+
+We went through each SNP (rows in matrix X), extracted the counts of each genotype (marked 1. in code) for cases and controls, then we compute expected probability (marked 2. in code). Finally, we perform a chi-squared contingency table test comparing those observed counts to expected probabilities assuming that genotype is not related to disease status (marked 3. in code).
+
+plot the each pvalue over each iterations. This plot is knows as a Manhattan plot.
+
+```{r}
+p_val_df <- data.frame(p_val = p_vals, idx = 1:p) #create a dataframe using the p_val vector and the no of iterations as another column
+
+ggplot(p_val_df, aes(x = idx, y = -log10(p_val))) + #plot the each pvalue over each iterations
+    geom_point(size = 2.5, col = "dodgerblue1")
+```
+ One SNP (i_p = 250) will pop out as being highly associated with the disease process. Look at the genotype counts (or MAF) for this SNP in the cases and controls to see for yourself that there is large difference in the distribution of genotypes (or MAF).
+
+```{r}
+
+i_p <- 250
+counts_v <- c(sum(X[i_p, control] == 0), sum(X[i_p, control] == 1), #when i_p is 250 
+              sum(X[i_p, control] == 2), sum(X[i_p, cases] == 0),
+              sum(X[i_p, cases] == 1), sum(X[i_p, cases] == 2))
+
+snp_procs <- data.frame(counts_v, type = rep(c("control", "cases"), each = 3),
+                        genotype = rep(c("AA", "Aa", "aa"), 2)) #create a dataframe, first column is the counts_v vector, then 2nd column is called type and is a vector that repeats control and cases 3 times each so in 3 rows each, then 3rd column is genotype that repeats AA, Aa and aa after  
+           
+
+ggplot(snp_procs, aes(x = genotype, y = counts_v, fill = type)) +
+    geom_bar(stat = "identity", position = "dodge") #plot a bar graph of genotype vs counts. Position = dodge pushes overlapping objects away from each other
+```
+13.3 GWAS and logistic regression
+
+Now lets approach this problem using Generalised Linear Models. Lets load a data set containing genotypes in X and case-control status in y.
+
+For each of the p SNPs we are going to call the R GLM function glm using the binomial family option with the logit link function because my outcomes are binary. We will then extract the p-value associated with the regression coefficient for the genotype. This is obtained from applying a hypothesis test (the Wald Test) on whether the coefficient has a null value zero.
+
+```{r}
+
+load("gwas-cc-ex2.Rdata")
+
+n <- length(y) 
+p <- nrow(X) 
+
+p_vals <- rep(0, p)
+
+for ( j in 1:p ) {
+  snp_data <- data.frame(y = y, x = X[j, ]) #create a dataframe with y vector in a y column and x matrix using the j iteration as the row no and all columns -theres 4000 elemnets in y vector and 1000 rows and 4000 columns in x so ist iteration will use y vector and x matrix row 1 all columns, 2nd iteration row 2, all colums etc until all 1000 iterations i.e rows are done
+  glm.fit <- glm(y ~ x, family = binomial(link = logit), data = snp_data  ) #do the general linear model on the y and x, since y is a binary 0,1, will use binomial rule (see notes in general linear regression) using each snp data dataframe
+  p_vals[j] <- summary(glm.fit)$coefficients[2,4] #extract the coefficients in the summary of the glm and save it it each iteration index in p_vals
+}
+
+```
+
+We are testing 1,000 SNPs so lets use Bonferroni correction to adjust these p-values to take into account multiple testing.
+
+Lets use the adjusted -log10 p-values to plot a Manhattan plot.
+You should see a single SNP showing a strong association with disease status.
+
+```{r}
+adj_p_vals <- p.adjust(p_vals, "bonferroni")
+
+p_val_df <- data.frame(p_val = adj_p_vals, idx = 1:p) # create data.frame with p-values for plotting with ggplot
+
+ggplot(p_val_df, aes(x = idx, y = -log10(p_val))) +
+    geom_point(size = 2.5, col = "dodgerblue1") +
+    labs(y = "-log10(adjusted p-value)")
+
+```
+13.4 Negative binomial and Poisson regression
+
+Molecular biologists study the behaviour of protein expression in normal and cancerous tissues. The hypothesis is that the total number of over-expressed proteins depends on the histopathological-derived tumour subtype and an immune cell contexture measure.
+
+You are provided with data on 314 tumours in the file nb_data.Rdata. The file contains one data frame with the following variables:
+
+overexpressed_proteins: response variable of interest.
+immunoscore: gives a standardised measure of immune cell contexture.
+tumor_subtype: three-level nominal variable indicating the histopathological sub-type of the tumour. The three levels are Unstable, Stable, and Complex
+Let’s load some prerequisite R libraries and the data to produce some summary statistics (install if required using install.package() command ):
+
+```{r}
+# required libraries
+library(MASS)
+library(foreign)
+
+tmp<- load("nb_data.Rdata")
+
+# print summary statistics to Console
+summary(dat)
+head(dat)
+```
+13.4.1 Count-based GLMs
+The overexpressed_proteins measurements are counts. This implies we should use a Poisson based GLM.
+
+In Poisson regression models, the conditional variance is by definition equal to the conditional mean. This can be limiting.
+
+Negative binomial regression can be used for over-dispersed count data, that is when the conditional variance exceeds the conditional mean.
+
+It can be considered as a generalization of Poisson regression since it has the same mean structure as Poisson regression but it has an extra parameter to model the over-dispersion. If the conditional distribution of the outcome variable is over-dispersed, the confidence intervals for the Poisson regression are likely to be narrower as compared to those from a Negative Binomial regression model.
+
+In the following we will try both models to see which fits best.
+
+13.4.2 Fitting a GLM
+
+Below we use the glm.nb function from the MASS package to estimate a negative binomial regression. The use of the function is similar to that of lm for linear models but with the additional requirement of a link function. As count data is always positive, a log link function is useful here.
+
+```{r}
+
+glm_1 <- glm.nb(overexpressed_proteins ~ immunoscore + tumor_subtype + gender, data = dat, link=log)
+
+# print summary statistics of glm.nb output object to Console
+summary(glm_1)
+```
+R first displays the call and the deviance residuals. Next, we see the regression coefficients for each of the variables, along with standard errors, z-scores, and p-values. The variable immunoscore has a coefficient of -0.006, which is statistically significant at the 5% level (Pr(>|z|) = 0.0124*). This means that for each one-unit increase in immunoscore, the expected log count of the number of overexpressed_proteins decreases by 0.006.
+
+The indicator variable shown as tumor_subtypeUnstable is the expected difference in log count between group Unstable and the reference group (tumor_subtype=Complex). The expected log count for the Unstable type is approximately 0.4 lower than the expected log count for the Complex type.
+
+The indicator variable for Stable type is the expected difference in log count between the Stable type and the reference Complex group. The expected log count for Stable is approximately 1.2 lower than the expected log count for the Complex type.
+
+
+13.4.3 Comparing nested models
+
+To determine if tumor_subtype itself, overall, is statistically significant, we can compare a model with and without tumor_subtype. The reason it is important to fit separate models is that, unless we do, the overdispersion parameter is held constant and it would not be a fair comparison.
+
+We use the anova function to compare models using a likelihood ratio test (LRT):
+
+```{r}
+glm_2 <- glm.nb(overexpressed_proteins ~ immunoscore + gender, data = dat, link = log)
+anova(glm_1, glm_2, test = "LRT") #use anova to compare the 2 linear models with and without tumore_subtype os a feature
+```
+
+The two degree-of-freedom chi-square test indicates that tumor_subtype is a statistically significant predictor of overexpressed_proteins (Pr(Chi) = 3.133546e-10).
+
+The anova function performs a form of LRT. It computes the likelihood of the data under the two models being compared and then uses the ration of these likelihood values as a test statistic.
+
+Theory tells us that, for large samples sizes, the (2x) log likelihood ratio has a chi-squared distribution with degrees of freedom equal to the difference in the number of free parameters between the two models being compared. The LRT only applies to nested models, i.e. a pair of models where one is a less complex subset of the other.
+
+
+13.5 Negative-Binomial vs Poisson GLMs
+
+Negative binomial models assume the conditional means are not equal to the conditional variances. This inequality is captured by estimating a dispersion parameter (not shown in the output) that is held constant in a Poisson model. Thus, the Poisson model is actually nested in the negative binomial model. We can then use a likelihood ratio test to compare these two models.
+
+To do this, we will first fit a GLM Poisson regression.
+
+Then lets do our likelihood ratio test, we can extract the log-likelihood using logLik() and then use pchisq() to extract the probability of getting a statistic at least as extreme as this.
+
+Note that the more complex model goes first because more complex models always have the larger likelihood.
+
+In this example the associated chi-squared value estimated from 2*(logLik(m1) – logLik(m3)) is around 900 with one degree of freedom. This strongly suggests the negative binomial model, estimating the dispersion parameter, is more appropriate than the Poisson model.
+
+```{r}
+glm_3 <- glm(overexpressed_proteins ~ immunoscore + tumor_subtype + gender, family = "poisson", data = dat)
+
+pchisq(2 * (logLik(glm_1) - logLik(glm_3)), df = 1, lower.tail = FALSE)
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

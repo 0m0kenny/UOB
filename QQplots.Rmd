@@ -1,0 +1,100 @@
+---
+title: "QQ plot"
+output: html_document
+date: "2024-10-30"
+---
+
+
+12 QQ Plot - How To Use And Interpret
+In this practical we will go through practical applications of quantile quantile plots (QQ plots) and look at interpreting results.
+
+We went through the most common way they are used to check for normality. You can of course use them to compare observed data to any distribution. During this exercise we will use as example data randomly generated data and the mtcars data-set built into R.
+
+12.1 Introduction and Simulation
+
+Let us go through creating a QQ plot from basic principles, this will give you a good understanding of what happens in the background when you use the qqplot functions in R. You are unlikely to do this yourself in the future but it is good to know what is happening and understand the principles you are applying.
+
+We will make a start by generating some random data sampled from a normal distribution N(μ=5,σ2=4)
+.
+```{r}
+
+set.seed(1214)
+# create random number sampled from a normal distribution
+x <- rnorm(20, mean = 2, sd = 2)
+
+
+```
+
+The first step is to sort the data, and then can create quantiles. We can create naïve quantiles based on this data first. This is done by ranking the data and dividing by the length of the data. This is a simple way to create quantiles but it is not centered. We will also create theoretical quantiles based on the standard normal distribution.
+
+When we create theoretical quantiles we want to center them. You can check this yourself try qnorm(0) and qnorm(1). Instead we adjust the ranks by 1/2 to get a centered bins. There is an inbuilt function in R that also performs this adjustment, ppoints. Remember to check how it works using ?ppoints
+
+```{r}
+
+set.seed(1214)
+x <- rnorm(20, mean = 2, sd = 2)
+x_sort <- sort(x) #sort the data
+
+rank(x_sort) / length(x_sort) #ranks the sorted data then divide by lenth to create quantiles. rank() numbers each value in x from 1 to total no of values in x check notes for what qurtiles are
+
+eq <- (rank(x_sort) - 0.5) / length(x_sort) # create Emperical quantiles by minusing 0.5 from ranked d
+
+# Emperical quantiles using ppoints
+eq_p <- ppoints(length(x_sort))
+
+# Check if the two ways produce an identical vector
+identical(eq, eq_p)
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

@@ -1,0 +1,376 @@
+---
+title: "MSc Bioinformatics Coursework 2023/24"
+author: "Ihcène Medjber"
+date: "28/08/2023"
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Install dependencies
+# install.packages("MASS", repos = "https://cran.rstudio.com/")
+# install.packages("dplyr")
+# install.packages("ggplot2")
+```
+
+## 1 Snakes and Ladders
+
+## Commenting code
+
+```{r}
+# Define game parameters
+max_turns <- 30    # Maximum number of times the die will be rolled
+position <- 0      # Initial position of the player on the board (0 outside of the board)
+max_position <- 60 # Position that once reached, the game ends
+n_sides_die <- 6   # Number of faces of the die (6 for a regular die)
+
+# Iterate over the number of turns
+for (turn in 1:max_turns){
+  # Simulate a roll die 
+  die_roll <- sample.int(n_sides_die, 1)
+  
+  # Move the player in the board
+  position <- position + die_roll
+  
+  # Determine if game has to be stopped
+  if ( position >= max_position ){
+    # End the game
+    break
+  }
+}
+```
+
+## Singler player simulation
+
+```{r}
+# Define snakes and ladders positions as key-value to ease loockup and transitions
+snakes_head_to_tail = list(
+  "16" = 6,
+  "49" = 11,
+  "62" = 19,
+  "87" = 24,
+  "48" = 26,
+  "56" = 53,
+  "64" = 60,
+  "93" = 73,
+  "95" = 75,
+  "98" = 78
+)
+
+ladders_button_to_top <- list(
+  "1" = 38,
+  "4" = 14,
+  "9" = 31,
+  "21" = 42,
+  "28" = 84,
+  "36" = 44,
+  "51" = 67,
+  "71" = 91,
+  "80" = 100
+)
+
+# Define game parameters
+max_turns <- 30    # Maximum number of times the die will be rolled
+position <- 0      # Initial position of the player on the board (0 outside of the board)
+max_position <- 50 # Position that once reached, the game ends
+n_sides_die <- 6   # Number of faces of the die (6 for a regular die)
+
+# A vector where all positions visited by the player are recorded to be displayed in a plot
+visited_positions = c(0)
+
+# Iterate over the number of turns
+for (turn in 1:max_turns){
+  # Simulate a die roll
+  die_roll <- sample.int(n_sides_die, 1)
+  
+  # Move the player position by the outcome of the die roll
+  position <- position + die_roll
+  visited_positions = c(visited_positions, position)
+  
+  print(paste0("🎲 Turn ", turn, ": drawed ", die_roll, ", move to ", position))
+  
+  # Check if the new position is a snake head
+  snake_tail_position <- snakes_head_to_tail[[as.character(position)]]
+  if (!is.null(snake_tail_position)) { 
+    print(paste("🐍 On a snake head, move back to", snake_tail_position, '😱'))
+    
+    # Move the player to the position of the given snake tail
+    position <- snake_tail_position
+    visited_positions = c(visited_positions, position)
+    next()
+  }
+  
+  # End the game if the new position reached the end of the game
+  if ( position >= max_position ){
+    print(paste("🎉 Game ended after", turn, "turns"))
+    break
+  }
+  
+  # Check if the new position is a ladder bottom
+  ladder_top_position <- ladders_button_to_top[[as.character(position)]]
+  if (!is.null(ladder_top_position)) { 
+    print(paste("🪜On a ladder bottom, jump to", ladder_top_position, '🚀'))
+    
+    position <- ladder_top_position
+    visited_positions = c(visited_positions, position)
+    
+    # Double check if the game should be ended after the ladder jump
+    if ( position >= max_position ){
+      print(paste("🎉 Game ended after", turn, "turns"))
+      break
+    }
+  }
+}
+
+if(position < max_position) { 
+  print("👎 Game ended without win")  
+}
+
+
+```
+
+### Visualize the game
+
+I'm not sure if this is required for the assignment, but It was fun to build.
+
+```{r}
+library(ggplot2)
+
+# Initiate a board with all the positions from 1 to 100
+board <- expand.grid(x = 1:10, y = 1:10)
+board$number <- 0
+
+# Change the numbering of the board to mimick the zigzag positions of a ladder & snakes typical board
+for (row in 1:10) {
+  start <- (10 * (row - 1)) + 1
+  end <- start + 9
+  if (row %% 2 == 0) {
+    board$number[which(board$y == row)] <- rev(seq(start, end))
+  } else {
+    board$number[which(board$y == row)] <- seq(start, end)
+  }
+}
+
+# Define a function that returns the position of a given number in that zigzaging board
+get_coords <- function(num) {
+  y <- ceiling(num / 10)
+  x <- ifelse(y %% 2 == 1, num - 10*(y-1), 11 - (num - 10*(y-1)))
+  return(c(x, y))
+}
+
+# We will use the already defined mapping used in the simulation game and score the coordinates in a data frame
+snakes_start <- do.call(rbind, lapply(names(snakes_head_to_tail), function(x) get_coords(as.numeric(x))))
+colnames(snakes_start) <- c("x_start", "y_start")
+snakes_end <- do.call(rbind, lapply(snakes_head_to_tail, function(x) get_coords(x)))
+colnames(snakes_end) <- c("x_end", "y_end")
+# Consolidate in a single data frame
+snakes_data <- as.data.frame(cbind(snakes_start, snakes_end))
+
+# Same for ladders
+ladders_start <- do.call(rbind, lapply(names(ladders_button_to_top), function(x) get_coords(as.numeric(x))))
+colnames(ladders_start) <- c("x_start", "y_start")
+ladders_end <- do.call(rbind, lapply(ladders_button_to_top, function(x) get_coords(x)))
+colnames(ladders_end) <- c("x_end", "y_end")
+ladders_data <- as.data.frame(cbind(ladders_start, ladders_end))
+
+# Extracting coordinates for visited positions
+player_coords <- lapply(visited_positions, get_coords)
+player_path <- as.data.frame(do.call(rbind, player_coords))
+colnames(player_path) <- c("x", "y")
+
+# Creating segments for the player's path
+player_segments <- data.frame(
+  x_start = head(player_path$x, -1),
+  y_start = head(player_path$y, -1),
+  x_end = tail(player_path$x, -1),
+  y_end = tail(player_path$y, -1)
+)
+
+# Plotting the board
+ggplot(board, aes(x=x, y=y)) +
+  geom_tile(aes(fill=number), color="black", show.legend=FALSE) +
+  geom_text(aes(label=number), vjust=1.6, size=3.5) +
+  
+  # Plotting the ladders
+  geom_segment(data=ladders_data, aes(x=x_start, y=y_start, xend=x_end, yend=y_end, color="Ladders"), size=1) +
+  
+  # Plotting the snakes
+  geom_segment(data=snakes_data, aes(x=x_start, y=y_start, xend=x_end, yend=y_end, color="Snakes"), size=1) +
+  
+  # Plotting user positions
+  geom_segment(data=player_segments, aes(x=x_start, y=y_start, xend=x_end, yend=y_end, color="Player"), size=1, linetype="dashed") +
+  geom_point(data=player_path, aes(x=x, y=y), color="green", size=3) +
+  
+  scale_x_continuous(expand=c(0,0)) + 
+  scale_y_continuous(expand=c(0,0)) +
+  theme_void()
+```
+
+# **2 Data Analysis**
+
+## **2.1 Multiple Regression**
+
+```{r}
+# Load dependencies
+library(dplyr)
+library(ggplot2)
+
+# Load Rdata in the bmi_data variable
+load("assess_data_DL1222.Rdata")
+```
+
+### Check the bmi variable is correctly calculated.
+
+```{r}
+# margin error to consider a unit conversion
+error_marging <- 1
+
+# Expected BMI values for both sex
+expected_male_bmi <- 24
+expected_female_bmi <- 27
+
+# Compute the mean of BMI for both sex
+bmi_male_mean <- mean(bmi_data[bmi_data$sex == "male", ]$bmi)
+bmi_female_mean <- mean(bmi_data[bmi_data$sex == "female", ]$bmi)
+```
+
+### Calculate the bmi based on the height in m and weight in kg.
+
+```{r}
+# Check if the mean of the BMI is within the expected values with a confidence interval
+if(!between(bmi_female_mean, expected_male_bmi - error_marging, expected_male_bmi + error_marging) || !between(bmi_male_mean, 27 - error_marging, 27 + error_marging)) {
+  print('⚠️ convertion to the metric system needed')
+  
+  # Rename the existing height and bmi colums
+  names(bmi_data)[names(bmi_data) == "height"] <- "height_inch"
+  names(bmi_data)[names(bmi_data) == "bmi"] <- "bmi_inch"
+  
+  # Convert height in the metric system
+  bmi_data$height <- bmi_data$height_inch * 2.54
+  
+  # Recompute the BMI using fully metric system
+  bmi_data$bmi <- bmi_data$weight / (bmi_data$height/100)^2
+}
+
+bmi_male_mean <- mean(bmi_data[bmi_data$sex == "male", ]$bmi)
+bmi_female_mean <- mean(bmi_data[bmi_data$sex == "female", ]$bmi)
+
+# Inspect the new bmi means
+print(bmi_male_mean)
+print(bmi_female_mean)
+```
+
+### Comment on a potential reason for the mistake.
+
+Presumably, the BMI column has been computed using the metric formula while one of the columns stayed in the customary units. The formula in that case is different and implies that weight should be converted from kg to pounds $\frac{weight(lb)}{height(in)^2} \times 703$
+
+### Perform the multiple regression analysis.
+
+```{r}
+# Turn sex to factor (categorical variable)
+bmi_data$sex <- as.factor(bmi_data$sex)
+
+# Perform the multiple linear regression
+model <- lm(bmi ~ age + sex + weight, data = bmi_data)
+
+# Inspect the results of the model
+summary_fit <- summary(model)
+
+print(summary_fit)
+```
+
+### After performing the regression, analyse the coefficients and check for significance.
+
+```{r}
+alpha <- 0.05  # significance level
+
+# Define a function that displays the customized interpretation of each predicator variable
+interpret_coefficient <- function(coeff_name, coeff_value, p_value, alpha) {
+  if (p_value <= alpha) {
+    switch(coeff_name,
+      "(Intercept)" = cat("- ✅ The intercept represents the expected BMI value when all predictors are zero. In this context, it can be interpreted as the expected BMI at birth, which is", coeff_value, ", even though the weight is never zero at birth.\n"),
+      "age" = cat("- For every one-year increase in age, while keeping other predictors constant, the BMI is expected to increase by", coeff_value, "units. This relationship is statistically significant.\n"),
+      "sexmale" = cat("- ✅  Being male, as compared to female (the reference category), is associated with a", (if(coeff_value > 0) "increase" else "decrease"), "in BMI by", abs(coeff_value), "units. This relationship is statistically significant.\n"),
+      "weight" = cat("- ✅  For every one-unit increase in weight, while keeping other factors constant, the BMI is expected to increase by", coeff_value, "units. This relationship is statistically significant.\n"),
+               cat(coeff_name, "is statistically significant with a coefficient of", coeff_value, "and a p-value of", p_value, ".\n")
+        )
+    } else {
+      cat('- 🚨', coeff_name, "influence is not statistically significant with a p-value of", p_value, ".\n")
+    }
+}
+
+# Loop through each coefficient
+coeff_names <- rownames(summary_fit$coefficients)
+for (coeff_name in coeff_names) {
+  # Extract the estimate and the P-value
+  coeff_value <- summary_fit$coefficients[coeff_name, 1]
+  p_value <- summary_fit$coefficients[coeff_name, 4]
+  
+  # Print the interpretation
+  interpret_coefficient(coeff_name, coeff_value, p_value, alpha)
+}
+
+```
+
+### Plot the residuals. Are they normally distributed?
+
+Regarding residuals, Median is close to zero which is a good indicator of a model that is not over- or -under-predicting the response value (no symetrical bias). Symetrical quartiles suggest balanced residuals but don't exclude the presence of outliers. Hence, the necessity to plot data and perform a normality test:
+
+```{r}
+residuals <- residuals(model)
+
+ggplot(bmi_data, aes(x=residuals)) +
+  geom_histogram(aes(y=..density..), bins=50, fill="skyblue", alpha=0.7) +
+  geom_density(color="red") + 
+  labs(title="Histogram of Residuals", x="Residuals", y="Density") +
+  stat_function(fun=dnorm, args=list(mean=0, sd=sd(residuals)), color="blue", size=1.2) +
+  theme_minimal()
+```
+
+Now we will use the Shapiro-Wilk Test to check for normality
+
+```{r}
+shapiro_test <- shapiro.test(residuals)
+
+print(shapiro_test)
+
+# Decide based on p-value
+if (shapiro_test$p.value < 0.05) {
+  print("Residuals are not normally distributed")
+} else {
+  print("Residuals are approximately normally distributed")
+}
+```
+
+## 2.2 Which other variables are useful covariates for this model? Choose an appropriate algorithm to choose the features to include. Comment on the results.
+
+```{r}
+library(MASS)
+
+# Fit the initial model with all the predictors
+model <- lm(bmi ~ age + bai + body_fat + density + weight + height + sex, data = bmi_data)
+
+# Run the AIC algorithm with bi-bidirectional elimination
+stepwise_model <- stepAIC(model, direction = "both", trace = TRUE)
+summary(stepwise_model)
+```
+
+```{r}
+coef_names = names(coef(stepwise_model))
+
+all_predictors <- c('age', 'bai', 'body_fat', 'density', 'weight', 'height', 'sexmale')
+
+# Find selected and rejected predicators
+selected_predictors <- coef_names[coef_names != "(Intercept)"]
+rejected_predictors <- setdiff(all_predictors, selected_predictors)
+
+print(paste('The algorithm selected the columns', paste(selected_predictors, collapse = ', '), 'and rejected', rejected_predictors))
+```
+
+**Comment:**
+
+The stepwise algorithm chose to remove **`body_fat`** since removing it provided a lower (more favorable) AIC (-8102.9) than the model including it.

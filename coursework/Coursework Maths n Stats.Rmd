@@ -1,0 +1,598 @@
+---
+title: "MSc Bioinformatics Coursework 2024/25"
+author: "Kehinde Oyesola"
+date: "02/11/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#set up the environment, load packages and data needed for coursework
+library(ggplot2)
+library(tidyverse)
+options(bitmapType='cairo')
+rm(list=ls())
+load("assess_data_1224.Rdata")
+```
+
+# 1 Simulate Markov Chains
+
+## Q1 Comment Code
+
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.69 # the probability of going from state 2 to state 2
+n_days <- 700 #number of days to simulate
+
+#creates a 3x3 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0.0001,
+                              0.3, b, 0.01,
+                              0, 0, 1), nrow=3, ncol=3, byrow=TRUE)
+
+state <- 1 #the initial state to start from i.e state 1
+patient_record <- rep(0, n_days) #vector to store the simulated values over 700days
+
+#for loop to iterate 700 times
+for (day in 1:n_days) { 
+  pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the value of state
+  
+  state <- sample(c(1:3), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the value chosen
+  patient_record[day] <- state #for each iteration, store the sampled state into the corresponding index position in the vector
+}
+
+plot(1:n_days, patient_record, "l") #display the simulated patient record over the 700 days on a line plot
+```
+
+## Q2 Extend the Markov Chain
+
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4, 0.01,
+                              0.2, 0.2, c, 0.05, 0, 0, 0, 1), 
+                            nrow=4, ncol=4, byrow=TRUE)
+
+state <-  #the initial state to start from i.e state 1
+patient_record <- rep(0, n_days) #vector to store the simulated values over 700days
+patient_record
+#for loop to iterate 700 times
+for (day in 1:n_days) { 
+  pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+  
+  state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+  patient_record[day] <- state #for each iteration, store the sampled state into the corresponding index position in the vector
+}
+
+plot(1:n_days, patient_record, "l") #display the simulated patient record over the 700 days on a line plot
+```
+
+### Analysis of Q2 results
+
+There is no transition from state 4 (dead) to the other states as the probability from state 4 to other states is 0, whereas transition from state 4 to state 4 has a probability of 1. Therefore, from day 23 where state 4 was first sampled, it will remain so indefinitely for the rest of the simulated days.
+
+## Q3 Repeat the Simulation
+
+Repeat the simulation for the four-state Markov Chain above for 1000 patients, by extending your code from the previous question or otherwise. Choose an appropriate plot to display how long a patient spends in each state, on average. Also, calculate the average time spent in each state for the 1000 patients. Explain the results and what the selected plot shows.
+
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+n_patients <- 1000 #number of patients
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,0.2, 0.2, c, 0.05, 0,0,0,1),       nrow=4, ncol=4, byrow=TRUE)
+
+View(counts)
+data <- matrix(0, nrow=n_patients, ncol=n_days) #matrix to store simulated states for each patient
+matrixrow<- rep(0, n_patients) #vector to store row names of the matrix
+matrixcol <- rep(0, n_days) #vector to store column names of the matrix
+
+#change each element in the vector to Patient 1, Patient 2 etc
+# for (i in 1: n_patients){
+#   matrixrow[i] <- paste("Patient", i)
+# }
+# 
+# #change each element in the vector to Day 1, Day 2 etc
+# for (i in 1: n_days){
+#   matrixcol[i] <- paste("Day", i)
+# }
+# 
+# #change the data matrix row and column names
+# rownames(data)<- matrixrow
+# colnames(data) <- matrixcol
+
+#for loop to iterate for 1000 patients
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+   
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+data_df <- melt(data)# convert the matrix into a data frame for ggplot2 using melt() function
+
+names(data_df) <- c("Patient", "Day", "State") # Gives each row a header
+
+ggplot(data_df, aes(x =State)) +
+   geom_histogram(aes(colour = Day))
+
+ggplot(data_df, aes(x =Day, y= State)) +
+   geom_point(aes(colour = Patient))
+hist(data_df$Patient)
+hist(data_df$Day)
+hist(data_df$State)
+plot(1:n_days, data[1,], "l")
+
+```
+
+Choose an appropriate plot to display how long a patient spends in each state, on average. Also, calculate the average time spent in each state for the 1000 patients. Explain the results and what the selected plot shows.
+
+```{r}
+
+
+counts <- matrix(0, nrow = 1000, ncol = 4) #creates a matrix with elements initialised to 0 with 1000 rows and 4 columns
+                     
+for (patient in 1:n_patients) { #iterate over each patient
+      counts[patient, ] <- c(mean(data[patient, ] == 1), # count the number of times the patient is in state1
+                       mean(data[patient, ] == 2), #do the same and add to column2
+                       mean(data[patient, ] == 3), #do the same and add to column3
+                       mean(data[patient, ] == 4)) #do the same and add to column4
+  
+    
+}
+
+counts_df <- melt(counts) # convert the matrix into a data frame for ggplot2 using melt() function
+
+names(counts_df) <- c("Patient", "State", "Count") # Gives each row a header
+
+barplot(counts_df$Count)
+
+ggplot(counts_df, aes(x =as.factor(State), y= Count)) +
+   geom_violin(aes(colour = Patient))
+
+ggplot(counts_df, aes(x = as.factor(State), y = Count))   +geom_violin( aes(colour=Patient, fill=Patient),alpha = 0.5, width = 0.5)+ labs(title = "Average Time Spent in each state Per patient", x = "State", y = "Average Time") + theme(plot.title =element_text(hjust=0.5) ) +stat_summary(geom="errorbar", width =0.4)
+                   
+
+```
+
+## Q 4 Comment on the Results
+
+Comment if you expect to see a difference in the simulation if the starting state is changed to S0, SH, or D . Explain your reasoning. [3 MARKS]
+
+```{r}
+time<- matrix(0, nrow = n_patients, ncol= 4)
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+  
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    time[p,state]<- time[p,state]+1
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+average <- colMeans(time)
+average
+
+```
+
+## trying average
+
+```{r}
+# install.packages("roperators")
+# library(roperators)
+
+#loop through all  each patient and wherever u find 1 u cound it until its no longer one then save that count, then do the same for all states, then find average of the counts to get average time spent in a state before moving to another state.
+
+set.seed(42) 
+a <- 0.8999
+b <- 0.29
+c <- 0.55
+n_days <- 700
+n_patients <- 1000
+
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,
+                              0.2, 0.2, c, 0.05, 
+                              0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+state <- 1 
+patient_record <- rep(0, n_days) 
+
+for  (day in 1:n_days) { 
+  pr <- transition_matrix[state, ] 
+  
+  state <- sample(c(1:4), size = 1, prob = pr) 
+  patient_record[day] <- state 
+}
+
+count <- rep(0, n_days)
+
+start<- 0
+
+for (i in 1:n_days) {
+  if (patient_record[i] == 1) {
+    start <- start + 1
+    } else if (patient_record[i] != 1) {
+      count <- start
+    }
+}
+
+patient_record
+count
+
+# Function to calculate average time spent in each state
+average_times <- numeric(4)  # Vector to store average times for each state
+
+# Store durations of time spent in the current state
+  
+  
+states <- c(1:4)
+#state_durations <- c()    
+# Count consecutive days spent in the current state
+duration <- 0
+state_durations <- data.frame(State = integer(), Duration = integer())
+total_duration<- matrix(0, nrow=1, ncol= 4)
+for (s in states){
+  state <- states[s]
+  for (day in 1:n_days) {
+        if (patient_record[day] == state) {
+          duration <- duration + 1  # Increment duration if still in the same state
+        } else if (duration > 0 ) {
+          # When we leave the state, store the duration and reset
+          #state_durations <- c(sum(state_durations, duration))
+          #state_durations <- c(state_durations, duration)
+            state_durations <- rbind(state_durations, data.frame(State = state, Duration = duration))
+         
+            duration <- 0
+        } else if (state %ni% patient_record[day]){
+            duration <- 0
+        } else if (duration == 0) {
+              state_durations <- rbind(state_durations, data.frame(State = state, Duration = duration))
+         
+              
+          }
+        }
+}   
+   
+    # Capture the last sequence if it ends exactly at n_days
+
+     #state_durations <- c(sum(state_durations, duration))
+      #state_durations <- c(state_durations, duration)
+#state_durations <- rbind(state_durations, data.frame(State = state, Duration = duration))
+
+for (s in states) {
+
+  total <- state_durations[state_durations$State == s, ] 
+  total_duration[1,s]<- mean(total$Duration)
+}
+  # Calculate average time spent in this state
+  #average_times[state] <- mean(state_durations)
+
+
+# Display average times spent in each state
+#average_times
+state_durations
+patient_record
+#results
+#total<- which(state_durations$State == 2)
+
+total_duration
+```
+
+##trying average for 1000 patients for consecutive stays
+
+```{r}
+set.seed(42) 
+a <- 0.8999
+b <- 0.29
+c <- 0.55
+n_days <- 700
+n_patients <- 1000
+
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,
+                              0.2, 0.2, c, 0.05, 
+                              0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days) #matrix to store simulated states for each patient
+
+
+#for loop to iterate for 1000 patients
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+   
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+day_701 <- rep(0, n_patients)
+data <- cbind(data, n_days+1) #add an extra column to the data matrix 
+extra_days <- 701
+states <- c(1:4) #initialise states
+
+state_durations <- data.frame(Patient_no = integer(), State = integer(), Duration = integer()) #create dataframe to store the durations
+total_duration <- matrix(0, nrow=n_patients, ncol= 4) #create matrix to store the mean duration of each state per patient
+
+  
+for (p in 1:n_patients) { #iterate over each patient
+  duration <- 0 #initialise duration to 0
+
+  for (s in states){ #iterate over each state
+     for (day in 1:extra_days) { #iterate over each day 
+                               
+          if (data[p, day] == s) { #check the state in the position in the matrix
+            duration <- duration + 1  # Increment duration if still in the same state
+            
+          } else if (duration > 0) { #if there has been an increment of duration
+            state_durations <- rbind(state_durations,
+                                     data.frame(Patient_no = p, State = s, Duration = duration))
+            duration <- 0 #reset duration to 0
+          }
+     }
+  if (!any(data[p, ] == s)) {
+      # If the patient never entered this state, add duration of the state as zero
+            state_durations <- rbind(state_durations,
+                                     data.frame(Patient_no = p, State = s, Duration = 0))
+  }    
+    }   
+}
+
+
+#calculating the mean
+
+average_duration<- state_durations %>% 
+  group_by(Patient_no, State) %>% 
+  summarize(Avg = round(mean(Duration), digits = 2)) #group the data by the patient no and the state then calculate the mean duration in each group to 2 decimal places
+
+average_duration
+state_durations
+
+
+ggplot(average_duration, aes(x = as.factor(State), y = Avg, colour = Patient_no)) + geom_violin(aes(colour= Patient_no),alpha = 0.5, width = 1) + geom_jitter(aes(colour= Patient_no), size=2, height=0, width=0.2, alpha = 0.5)+ labs(title = "Average Time Spent in each state Per patient", x = "State", y = "Average Duration") + theme(plot.title =element_text(hjust=0.5) )+ theme(plot.title =element_text(hjust=0.5) )
+
+ggplot(average_duration, aes(x = as.factor(State), y = Avg))  +geom_jitter(aes(colour= Patient_no), size=2, height=0, width=0.2, alpha = 0.5) +geom_boxplot(stat="summary", fun=mean, aes(colour=Patient_no, fill=Patient_no),alpha = 0.5, width = 0.5)+ labs(title = "Average Time Spent in each state Per patient", x = "State", y = "Average Duration") + theme(plot.title =element_text(hjust=0.5) ) +stat_summary(geom="errorbar", width =0.4)
+boxplot(average_duration, State, Avg)
+boxplot()
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+# 2 Data Analysis
+
+## 
+
+```{r}
+
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+
+#load the dataset required
+load("data/assess_data_1224.Rdata")
+
+#assign new variables
+idx <- 20 
+c_cl <- 15:30
+
+boxplot(log2(Y[, c_cl] + 1)) #plot a boxplot of log2 of the Y matrix of all rows from column 15 to 30. Plus 1 as you can't log a 0.
+
+x <- patient_data$tissue[c_cl] #assign data in row 15 to 30 in tissue column in patient_data to x 
+z <- patient_data$patient[c_cl] #assign data in row 15 to 30 in patient column in patient_data to x 
+tmp <- data.frame(y = Y[idx, c_cl], x = x, z = z, lib_size = colSums(Y[, c_cl])) #create a dataframe 
+out <- glm(y ~ x + z + lib_size, data = tmp, family = "poisson") #perform general linear model based on poisson distribution rule
+p_val <- summary(out)$coefficients[2, 4] #extract the coefficients only from the summary
+
+```
+
+# 2.1 Data Exploration
+
+## Q 6 Quality Control
+
+There is one problematic sample in the data, identify the problematic sample and explain why it is problematic. Provide evidence and/or a plot to support your answer. You could consider using some statistics on the data to identify the problematic sample or any other suitable approach.
+
+```{r}
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+
+#load the dataset required
+go<- load("assess_data_1224.Rdata") #data in differ4ent directory so 
+
+view(go)
+view(Y)
+view(patient_data)
+str(go)
+
+idx <- 20
+c_cl <- 15:30
+
+boxplot(log2(Y[, c_cl] + 1)) 
+#plot a boxplot of log2 of the Y matrix of all rows from column 15 to 30. Plus 1 as you can't log a 0.
+x <- patient_data$tissue[c_cl] #assign data in row 15 to 30 in tissue column in patient_data to x 
+z <- patient_data$patient[c_cl] #assign data in row 15 to 30 in patient column in patient_data to x 
+tmp <- data.frame(y = Y[idx, c_cl], x = x, z = z, lib_size = colSums(Y[, c_cl])) #create a dataframe 
+out <- glm(y ~ x + z + lib_size, data = tmp, family = "poisson") #perform general linear model based on poisson distribution rule
+p_val <- summary(out)$coefficients[2, 4] #extract the coefficients only from the summary
+tmp
+out
+summary(out)
+p_val
+
+```
+
+## Q 7 Differential Expression
+
+Using the code from Q5, perform a regression-based differential expression analysis between all normal and tumour samples using Poisson regression. Use the tissue type as the only covariate. Plot the appropriate log10 p-value from your analysis.
+
+```{r}
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+
+#load the dataset required
+go<- load("assess_data_1224.Rdata")
+
+idx <- 20
+
+
+x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
+tmp <- data.frame(y = Y[idx, ], x = x)#create a dataframe 
+tmp
+out <- glm(y ~ x, data = tmp, family = "poisson") #perform general linear model based on poisson distribution rule
+out
+p_val <- summary(out)$coefficients[2, 4]
+p_val
+summary(out)
+    
+p_val_df<- data.frame(p_vals = p_val, gene_no = idx) #create a dataframe using the p_val vector and the genes number
+ggplot(p_val_df, aes(x = idx, y = -log10(p_vals+1))) + #plot the each pvalue  plus one since the pval is 0
+    geom_point(size = 2.5, col = "dodgerblue1")
+
+```
+
+##Q 8 Differential Expression with Covariates
+
+Perform a regression-based analysis to identify genes differentially expressed between normal and tumour samples including the tissue variable indicating if it is tumour or normal sample. Plot the appropriate log10 p-value from your analysis.
+
+```{r}
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+
+#load the dataset required
+go<- load("assess_data_1224.Rdata")
+
+x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
+g<- nrow(Y) #find the length of the matrix
+ 
+p_val <- rep(0, g)
+tissue_type <- rep(0, g)
+
+
+# Loop over genes
+for (gene in 1:g) {
+    tmp2 <- data.frame(y = Y[gene, ], x = x) #create a dataframe for each row of genes in Y
+    out <- glm(y ~ x, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
+    p_val[gene] <- summary(out)$coefficients[2, 4]#extract pvalues for each gene
+    tissue_type[gene] <- rownames(summary(out)$coefficients)[2] 
+}
+tmp2
+summary(out)
+p_val
+tissue_type
+
+p_val_df<- data.frame(p_vals = p_val, gene_no = 1:g) #create a dataframe using the p_val vector and the total no of genes
+p_val_df
+ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) + #plot the each pvalue for each gene
+    geom_point(size = 2.5, col = "dodgerblue1")
+
+adj_p_vals <- p.adjust(p_val, "bonferroni")
+
+p_val_df <- data.frame(p_vals = adj_p_vals, gene_no = 1:g) # create data.frame with p-values for plotting with ggplot
+
+ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) +
+    geom_point(size = 2.5, col = "dodgerblue1") +
+    labs(y = "-log10(adjusted p-value)")
+```
+
+```{r}
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+
+#load the dataset required
+go<- load("assess_data_1224.Rdata")
+
+x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
+g<- nrow(Y) #find the length of the matrix
+z <- patient_data$patient
+
+p_val <- rep(0, g)
+tissue_type <- rep(0, g)
+
+
+# Loop over genes
+for (gene in 1:g) {
+    tmp2 <- data.frame(y = Y[gene, ], x = x, patient = z) #create a dataframe for each row of genes in Y
+    out <- glm(y~z+x, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
+    p_val[gene] <- summary(out)$coefficients[2, 4]#extract pvalues for each gene
+    #tissue_type[gene] <- rownames(summary(out)$coefficients)[2] 
+}
+
+summary(out)
+p_val_df<- data.frame(p_vals = p_val, gene_no = 1:g) #create a dataframe using the p_val vector and the total no of genes
+ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals))) + #plot the each pvalue for each gene
+    geom_point(size = 2.5, col = "dodgerblue1")
+
+# adj_p_vals <- p.adjust(p_val, "bonferroni")
+# 
+# p_val_df <- data.frame(p_vals = adj_p_vals, gene_no = 1:g) # create data.frame with p-values for plotting with ggplot
+
+# ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) +
+#     geom_point(size = 2.5, col = "dodgerblue1") +
+#     labs(y = "-log10(adjusted p-value)")
+```
+
+Compare the p-values with and without inclusion of the tissue type as a covariate, what do you observe? Which of the covariate has the biggest effect? Explain your answer with supporting plots, tables and further analysis if required.
+
+```{r}
+for (gene in 1:g) {
+    tmp3 <- data.frame(y = Y[gene, ], x = x, patient = z) #create a dataframe for each row of genes in Y
+    out2 <- glm(y~z, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
+    p_val[gene] <- summary(out)$coefficients[2, 4]#extract pvalues for each gene
+    #tissue_type[gene] <- rownames(summary(out)$coefficients)[2] 
+}
+summary(out)
+
+p_val_df<- data.frame(p_vals = p_val, gene_no = 1:g) #create a dataframe using the p_val vector and the total no of genes
+ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) + #plot the each pvalue for each gene
+    geom_point(size = 2.5, col = "dodgerblue1")
+
+anova(glm_1, glm_2, test = "LRT")
+```
+
+Explain the results from the differential expression analysis. What do you observe from the p-values and the effect sizes? What is the effect of including the tissue type as a covariate? What is the effect of the library size on the analysis? You don’t need to perform any further analysis.
+
+```{r}
+
+```
+
+```{r}
+```

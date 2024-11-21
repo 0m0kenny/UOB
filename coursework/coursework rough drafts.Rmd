@@ -1,0 +1,603 @@
+
+# Q2 extend code 
+## matrix
+using for loops for to name each column and rows with day 1 and patient 1
+alternative is to convert the matrix into a dataframe using melt then change row and column headers
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+n_patients <- 1000 #number of patients
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,0.2, 0.2, c, 0.05, 0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+View(counts)
+data <- matrix(0, nrow=n_patients, ncol=n_days) #matrix to store simulated states for each patient
+matrixrow<- rep(0, n_patients) #vector to store row names of the matrix
+matrixcol <- rep(0, n_days) #vector to store column names of the matrix
+
+#change each element in the vector to Patient 1, Patient 2 etc
+for (i in 1: n_patients){
+  matrixrow[i] <- paste("Patient", i)
+}
+
+#change each element in the vector to Day 1, Day 2 etc
+for (i in 1: n_days){
+  matrixcol[i] <- paste("Day", i)
+}
+
+#change the data matrix row and column names
+rownames(data)<- matrixrow
+colnames(data) <- matrixcol
+
+#for loop to iterate for 1000 patients
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+   
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+
+plot(1:n_patients, data[,1], "l")
+plot(1:n_dayss, data[,1], "l")
+
+```
+
+## alternative df
+convert the matrix into a dataframe using melt then change row and column headers
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+n_patients <- 1000 #number of patients
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,0.2, 0.2, c, 0.05, 0,0,0,1),       nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days) #matrix to store simulated states for each patient
+
+
+
+
+#for loop to iterate for 1000 patients
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+   
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+data_df <- melt(data)# convert the matrix into a data frame for ggplot2 using melt() function
+
+names(data_df) <- c("Patient", "Day", "State") # Gives each row a header
+
+ggplot(data_df, aes(x =State)) +
+   geom_histogram(aes(colour = Day))
+
+ggplot(data_df, aes(x =Day, y= State)) +
+   geom_point(aes(colour = Patient))
+
+hist(data_df$Patient)
+hist(data_df$Day)
+hist(data_df$State)
+plot(1:n_days, data[1,], "l")
+
+```
+
+#Q2 time spent in state
+
+trying different ways to answer how long a patient spends on average on each state
+
+## count how many times each state appears in each patient and average
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+n_patients <- 1000 #number of patients
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,0.2, 0.2, c, 0.05, 0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days)
+
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) 
+    data[p,day] <- state
+  }
+}
+
+counts <- matrix(0, nrow = 1000, ncol = 4) #creates a matrix with elements initialised to 0 with 1000 rows and 4 columns
+                     
+for (patient in 1:n_patients) { #iterate over each patient
+      counts[patient, ] <- c(mean(data[patient, ] == 1), # count the total number of days the patient is in state 1 and then average it (so no of state 1/700 days)
+                       mean(data[patient, ] == 2), #do the same and add to column2
+                       mean(data[patient, ] == 3), #do the same and add to column3
+                       mean(data[patient, ] == 4)) #do the same and add to column4
+  
+    
+}
+
+counts
+
+counts_df <- melt(counts) # convert the matrix into a data frame for ggplot2 using melt() function
+
+names(counts_df) <- c("Patient", "State", "Count") # Gives each row a header
+
+# barplot(counts_df$Count)
+# 
+# ggplot(counts_df, aes(x =State, y= Count)) +
+#    geom_point(aes(colour = Patient))
+```
+
+
+```{r}
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+n_patients <- 1000 #number of patients
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,0.2, 0.2, c, 0.05, 0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days)
+
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    state <- sample(c(1:4), size = 1, prob = pr) 
+    data[p,day] <- state
+  }
+}
+
+
+```
+
+## count consecutive days on average each state persists before moving on to next state
+
+loop through each patient and wherever u find 1, count the no of days it remains until its no longer one then save that count, then do the same for all states, then find average of the counts to get average time spent in a state before moving to another state.
+
+###code for one patient first
+```{r}
+set.seed(42) 
+a <- 0.8999
+b <- 0.29
+c <- 0.55
+n_days <- 700
+n_patients <- 1000
+
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,
+                              0.2, 0.2, c, 0.05, 
+                              0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+state <- 1 
+patient_record <- rep(0, n_days) 
+
+for  (day in 1:n_days) { 
+  pr <- transition_matrix[state, ] 
+  
+  state <- sample(c(1:4), size = 1, prob = pr) 
+  patient_record[day] <- state 
+}
+
+states <- c(1:4)
+
+   
+# Count consecutive days spent in the current state
+duration <- 0
+duration_ls <- list(`1` = integer(), `2` = integer(), `3` = integer(), `4` = integer())
+state_durations <- data.frame(State = integer(), Duration = integer()) #create empty dataframe with each column an integer
+total_duration<- matrix(0, nrow=1, ncol= 4) #create empty matrix to store total counts
+ 
+for (s in states){
+  for (day in 1:n_days) {
+        if (patient_record[day] == s) {
+          duration <- duration + 1  # Increment duration if still in the same state
+         } else if (duration > 0) {
+           duration_ls[[as.character(s)]] <- c(duration_ls[[as.character(s)]], duration) #convert the state number into a list and append the duration to the list corresponding to the state number
+           state_durations <- rbind(state_durations, data.frame(State = s, Duration = duration))
+           duration <- 0
+        }
+  }   
+} 
+
+# Capture the last sequence if it ends exactly at n_days
+if (duration > 0) {
+     duration_ls[[as.character(s)]] <- c(duration_ls[[as.character(s)]], duration)
+     state_durations <- rbind(state_durations, data.frame(State = s, Duration = duration))
+}
+
+duration_ls
+state_durations
+
+duration_df <- data.frame(State = names(duration_ls), Duration = I(duration_ls))
+duration_df
+
+#calculate average duration for each state
+for (s in states) {
+  total <- state_durations[state_durations$State == s, ]
+  total_duration[1,s] <- mean(sapply(duration_df$Duration, length))
+}
+
+average_duration<- mean(sapply(duration_df$Duration, length))
+average_duration
+
+# Display average times spent in each state
+
+state_durations
+patient_record
+
+#total<- which(state_durations$State == 2)
+
+total_duration
+
+```
+### trying to combine into counts into lists for each patient by state
+
+```{r}
+rm(list=ls())
+set.seed(42) 
+a <- 0.8999
+b <- 0.29
+c <- 0.55
+n_days <- 700
+n_patients <- 1000
+
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,
+                              0.2, 0.2, c, 0.05, 
+                              0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days) #matrix to store simulated states for each patient
+
+
+#for loop to iterate for 1000 patients
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+   
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+day_701 <- rep(0, n_patients)
+data <- cbind(data, n_days+1) #add an extra column to the data matrix 
+
+states <- c(1:4) #initialise states
+
+#duration_ls <- list(`1` = integer(), `2` = integer(), `3` = integer(), `4` = integer())
+duration_ls<- list()
+
+state_durations <- data.frame(Patient_no = integer(), State = integer(), Duration = integer()) #create dataframe to store the durations
+total_duration <- matrix(0, nrow=n_patients, ncol= 4) #create matrix to store the mean duration of each state per patient
+duration_df <- data.frame( Patient_no = integer(), State = integer(), Duration = I(list()))
+  
+for (p in 1:n_patients) { #iterate over each patient
+  duration <- 0 #initialise duration to 0
+  duration_ls[[p]] <- list(`1` = integer(), `2` = integer(), `3` = integer(), `4` = integer())
+  for (s in states){ #iterate over each state
+     for (day in 1:n_days+1) { #iterate over each day 
+                               
+          if (data[p, day] == s) { #check the state in the position in the matrix
+            duration <- duration + 1  # Increment duration if still in the same state
+            
+          } else if (duration > 0) { 
+            duration_ls[[p]][[as.character(s)]] <- c(duration_ls[[p]][[as.character(s)]], duration)
+            state_durations <- rbind(state_durations,
+                                     data.frame(Patient_no = p, State = s, Duration = duration))
+            duration_df <- rbind(duration_df, data.frame(Patient_no = p, State = s,
+                                                         Duration = I(duration_ls[as.character(s)])))
+            duration <- 0
+            #duration_ls <- NULL
+          }
+     }
+  if (!any(data[p, ] == s)) {
+      # If the patient never entered this state, add duration as zero
+            duration_ls[[p]][[as.character(s)]] <- c(duration_ls[[p]][[as.character(s)]], 0)
+            state_durations <- rbind(state_durations, 
+                                     data.frame(Patient_no = p, State = s, Duration = 0))
+            duration_df <- rbind(duration_df, data.frame(Patient_no = p, State = s,
+                                                         Duration = I(duration_ls[as.character(s)])))
+       }
+    }   
+}
+duration_ls
+state_durations
+
+#duration_df <- data.frame(State = names(duration_ls), Duration = I(duration_ls))
+duration_df
+
+  
+
+#calculating the mean
+for (p in 1:n_patients){
+  
+  for (s in states) {
+      total <- state_durations[state_durations$Patient_no == p & state_durations$State == s, "Duration"] #filter the dataframe for each patient and each state and duration
+      total_duration[p,s] <- round(mean(total), digits = 2) # find the mean of the filtered columns and round to 2 decimal places
+      
+  }
+}
+
+
+
+state_durations
+
+
+total_duration
+```
+
+
+
+```{r}
+# Initialize variables
+state_durations <- list(`1` = list(), `2` = list(), `3` = list(), `4` = list())  # Create an empty list for each state
+current_state <- patient_record[1]  # Set initial state
+duration <- 1  # Start counting from day 1
+
+# Loop through each day to collect durations
+for (day in 2:n_days) {  
+  if (patient_record[day] == current_state) {
+    # If still in the same state, increment the duration
+    duration <- duration + 1
+  } else {
+    # If state changes, store the duration in the list for that state
+    state_durations[[as.character(current_state)]] <- 
+      c(state_durations[[as.character(current_state)]], duration)
+      
+    # Reset duration and update the state
+    current_state <- patient_record[day]
+    duration <- 1
+  }
+}
+
+# Add the final duration if the sequence ends exactly on the last day
+state_durations[[as.character(current_state)]] <- 
+  c(state_durations[[as.character(current_state)]], duration)
+
+# Convert the state durations list to a data frame
+state_summary <- data.frame(
+  State = 1:4,
+  Durations = I(state_durations)  # Wrap list elements with I() to keep them as lists in the data frame
+)
+
+# View the result
+print(state_summary)
+
+```
+
+
+
+
+### code for 1000 patients
+```{r}
+set.seed(42) 
+a <- 0.8999
+b <- 0.29
+c <- 0.55
+n_days <- 700
+n_patients <- 1000
+
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,
+                              0.2, 0.2, c, 0.05, 
+                              0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days) #matrix to store simulated states for each patient
+
+
+#for loop to iterate for 1000 patients
+for (p in 1:n_patients){
+  state <- 1 
+  
+  for (day in 1:n_days) { 
+    pr <- transition_matrix[state, ] 
+    state <- sample(c(1:4), size = 1, prob = pr) 
+    data[p,day] <- state 
+  }
+  
+}
+
+#count consecutive days for each state per patient
+
+states <- c(1:4) #initialise states
+
+state_durations <- data.frame(Patient_no = integer(), State = integer(), Duration = integer()) #create dataframe to store the durations
+
+total_duration <- matrix(0, nrow=n_patients, ncol= 4) #create matrix to store the mean duration of each state per patient
+
+for (p in 1:n_patients) { #iterate over each patient
+  duration <- 0 #initialise duration to 0
+
+  for (s in states){ #iterate over each state
+    for (day in 1:n_days) { #iterate over each day 
+          if (data[p,day] == s) { #check the state in the position in the matrix
+            duration <- duration + 1  # Increment duration if still in the same state
+          
+            state_durations <- rbind(state_durations,
+                                     data.frame(Patient_no = p, State = s, Duration = duration)) #combine the datat frame with a new dataframe of the same name
+            duration <- 0
+          }
+          if (s %in% data[p,] ) {
+            duration <- 0
+            state_durations <- rbind(state_durations,
+                                     data.frame(Patient_no = p, State = s, Duration = duration))
+        
+        
+          }
+    }   
+  }    
+      # Capture the last sequence if it ends exactly at n_days
+  if (duration > 0) {
+       #state_durations <- c(sum(state_durations, duration))
+        #state_durations <- c(state_durations, duration)
+        state_durations <- rbind(state_durations, data.frame(Patient_no = p, State = s, Duration = duration))
+  }
+}
+#calculating the mean
+for (p in 1:n_patients){
+  
+  for (s in states) {
+      total <- state_durations[state_durations$Patient_no == p & state_durations$State == s, ] #filter for each patient no and the state
+      if (length(total$Duration) > 0) {
+        total_duration[p,s] <- round(mean(total$Duration),digits = 2)
+      } else {
+          total_duration[p,s] <- 0
+      }
+  }
+}
+
+
+
+state_durations
+
+
+total_duration
+
+ggplot(total_duration, aes(x =State)) +
+   geom_histogram(aes(colour = Day))
+
+```
+
+
+#create dataframe and store each consecuitve duration for each state as a list to avoid having too many rows 
+```{r}
+
+states <- c(1:4) #initialise states
+
+state_durations <- data.frame(Patient_no = integer(), State = integer(), Duration = I(list()) #create dataframe to store the durations
+
+total_duration <- matrix(0, nrow=n_patients, ncol= 4) #create matrix to store the mean duration of each state per patient
+
+
+for (p in 1:n_patients) { #iterate over each patient
+  duration <- 0 #initialise duration to 0
+
+  for (s in states){ #iterate over each state
+    for (day in 1:n_days) { #iterate over each day 
+          if (data[p,day] == s) { #check the state in the position in the matrix
+            duration <- duration + 1  # Increment duration if still in the same state
+          
+            state_durations <- rbind(state_durations,
+                                     data.frame(Patient_no = p, State = s, Duration = duration)) #combine the datat frame with a new dataframe of the same name
+            duration <- 0
+          }
+        
+        
+          }
+    }   
+  }    
+      # Capture the last sequence if it ends exactly at n_days
+  if (duration > 0) {
+       #state_durations <- c(sum(state_durations, duration))
+        #state_durations <- c(state_durations, duration)
+        state_durations <- rbind(state_durations, data.frame(Patient_no = p, State = s, Duration = duration))
+  }
+}
+#calculating the mean
+for (p in 1:n_patients){
+  
+  for (s in states) {
+      total <- state_durations[state_durations$Patient_no == p & state_durations$State == s, ] #filter for each patient no and the state
+      if (length(total$Duration) > 0) {
+        total_duration[p,s] <- round(mean(total$Duration),digits = 2)
+      } else {
+          total_duration[p,s] <- 0
+      }
+  }
+}
+
+
+
+state_durations
+
+
+total_duration
+
+
+```
+
+### get total no of times each state chosen in the whole simulation and then average it
+using barbs AI
+```{r}
+
+#Defining parameters
+set.seed(42) #set seed to allow any randomly generated data to be reproducible
+a <- 0.8999 # the probability of going from state 1 to state 1
+b <- 0.29 # the probability of going from state 2 to state 2
+c <- 0.55 # the probability of going from state 3 to state 3
+
+n_days <- 700 #number of days to simulate
+n_patients <- 1000 #number of patients
+
+#creates a 4x4 matrix of the transition probabilties 
+transition_matrix <- matrix(c(a, 0.1, 0, 0.0001,
+                              0.3, b, 0.4,0.01,0.2, 0.2, c, 0.05, 0,0,0,1),nrow=4, ncol=4, byrow=TRUE)
+
+data <- matrix(0, nrow=n_patients, ncol=n_days)
+
+time<- matrix(0, nrow = n_patients, ncol= 4) #create a matrix to store no of times each state is chosen for each patient
+
+for (p in 1:n_patients){
+  state <- 1 #the initial state to start from i.e state 1
+  
+  # nested for loop to iterate 700 times for each patient
+  for (day in 1:n_days) { 
+    
+    pr <- transition_matrix[state, ] # gets the probabilities in the row of the matrix according to the state
+    
+    state <- sample(c(1:4), size = 1, prob = pr) #sample from numbers 1-3 based on the probabilities (pr) and update the state with the sample
+    time[p,state]<- time[p,state]+1
+    data[p,day] <- state #for each iteration, store the sampled state into the corresponding index position in the matrix
+  }
+  
+}
+average <- colMeans(time)
+average
+```
+
+
+```{r}
+```
+
