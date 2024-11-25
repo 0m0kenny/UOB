@@ -203,8 +203,8 @@ average
 ## trying average
 
 ```{r}
-# install.packages("roperators")
-# library(roperators)
+install.packages("roperators")
+library(roperators)
 
 #loop through all  each patient and wherever u find 1 u cound it until its no longer one then save that count, then do the same for all states, then find average of the counts to get average time spent in a state before moving to another state.
 
@@ -253,14 +253,22 @@ average_times <- numeric(4)  # Vector to store average times for each state
   
 states <- c(1:4)
 #state_durations <- c()    
+
+
 # Count consecutive days spent in the current state
-duration <- 0
-state_durations <- data.frame(State = integer(), Duration = integer())
-total_duration<- matrix(0, nrow=1, ncol= 4)
-for (s in states){
-  state <- states[s]
+
+#create a dataframe to store number of consecutive days spent in each state
+days_in_state <- data.frame(State = integer(), Days = integer())
+
+#create an empty matrix to store total no of days spent in each state
+total_days <- matrix(0, nrow=1, ncol= 4)
+
+con_days <- 0 #consecutive days
+
+
+for (s in states){ #iterate over each state
   for (day in 1:n_days) {
-        if (patient_record[day] == state) {
+        if (patient_record[day] == s) {
           duration <- duration + 1  # Increment duration if still in the same state
         } else if (duration > 0 ) {
           # When we leave the state, store the duration and reset
@@ -311,6 +319,7 @@ set.seed(42)
 a <- 0.8999
 b <- 0.29
 c <- 0.55
+
 n_days <- 700
 n_patients <- 1000
 
@@ -335,9 +344,12 @@ for (p in 1:n_patients){
   }
   
 }
+
+#initialise an empty column in the matrix so the state in the last day can be counted
 day_701 <- rep(0, n_patients)
+
 data <- cbind(data, n_days+1) #add an extra column to the data matrix 
-extra_days <- 701
+n_days <- ncol(data) #change n_days to no of columns in data matrix
 states <- c(1:4) #initialise states
 
 #change to matrix to avoid plagarism- change name state_time
@@ -370,7 +382,33 @@ for (p in 1:n_patients) { #iterate over each patient
     }   
 }
 
+for (p in 1:10) { #iterate over each patient
+     #initialise duration to 0
 
+  for (s in states){ #iterate over each state
+     for (day in 1:7) {
+
+        runs <- rle(data[p, day] == s) # rle -> run-length encoding
+    
+    # Get the duration of each run
+        durations <- runs$lengths[runs$values]
+    
+    # Total duration for this state
+        total_duration <- sum(durations)
+    
+    # If patient never entered the state, total_duration will remain 0
+        o <-data.frame(Patient_no = p, State = s, Duration = total_duration)
+     }
+  }
+}
+
+durations
+
+
+
+x <- rev(rep(6:10, 1:5))
+rle(x)
+x
 #calculating the mean
 
 average_duration<- state_durations %>% 
@@ -386,9 +424,60 @@ ggplot(average_duration, aes(x = as.factor(State), y = Avg, colour = Patient_no)
 ggplot(average_duration, aes(x = as.factor(State), y = Avg))  +geom_jitter(aes(colour= Patient_no), size=2, height=0, width=0.2, alpha = 0.5) +geom_boxplot(stat="summary", fun=mean, aes(colour=Patient_no, fill=Patient_no),alpha = 0.5, width = 0.5)+ labs(title = "Average Time Spent in each state Per patient", x = "State", y = "Average Duration") + theme(plot.title =element_text(hjust=0.5) ) +stat_summary(geom="errorbar", width =0.4)
 boxplot(average_duration, State, Avg)
 boxplot()
+
+
+z <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE)
+rle(z)
 ```
 
 ```{r}
+library(dplyr)
+
+#iterate over each state
+# Assuming `data` is a matrix or dataframe where rows represent patients and columns represent days
+# `states` is a vector of possible states
+# `n_patients` is the number of rows (patients) in `data`
+days_in_state <- data.frame(Patient_no = integer(), State = integer(), Duration = integer())
+patient_record <- data[1, ]
+con_days<-rle(patient_record)
+con_days_per_state <-con_days_per_state$lengths[con_days_per_state$values == 2]
+for (duration in state_duration) {
+        days_in_state <- rbind(days_in_state,
+                                 data.frame(Patient_no = 1, State = 2, Duration = duration))
+}
+
+
+
+for (record in 1:10) { #iterate over each patient
+
+    # extract individual pateint record in the matrix
+    patient_record <- data[p, ]
+    
+    # count consecutive days the patient is in each state using rle() function
+    con_days <- rle(patient_record) 
+    
+    
+    for (s in states){ #iterate over the different states
+      
+      if (s %in% runs$values) { 
+      # Find the durations for teach state
+      con_days_per_state <-con_days_per_state$lengths[con_days_per_state$values == s]
+      
+      # Add each duration to the dataframe
+      for (days in con_days_per_state) {
+        days_in_state <- rbind(days_in_state,
+                                 data.frame(Patient_no = p, State = s, Duration = duration))
+      }
+    } else {
+      # If the state is not found, record a duration of 0
+      days_in_state <- rbind(days_in_state,
+                               data.frame(Patient_no = p, State = s, Duration = 0))
+    }
+  }
+    
+   
+
+
 ```
 
 ```{r}
@@ -438,16 +527,18 @@ library(MASS)
 #load the dataset required
 go<- load("assess_data_1224.Rdata") #data in differ4ent directory so 
 
-view(go)
-view(Y)
-view(patient_data)
-str(go)
+# view(go)
+# view(Y)
+# view(patient_data)
+# str(go)
 
 idx <- 20
 c_cl <- 15:30
 
 boxplot(log2(Y[, c_cl] + 1)) 
-#plot a boxplot of log2 of the Y matrix of all rows from column 15 to 30. Plus 1 as you can't log a 0.
+#plot a boxplot of log2 of the Y matrix of all rows from column 15 to 30. Plus 1 as you can't log a 0. box plot of gene expression values for all genes per sample
+
+
 x <- patient_data$tissue[c_cl] #assign data in row 15 to 30 in tissue column in patient_data to x 
 z <- patient_data$patient[c_cl] #assign data in row 15 to 30 in patient column in patient_data to x 
 tmp <- data.frame(y = Y[idx, c_cl], x = x, z = z, lib_size = colSums(Y[, c_cl])) #create a dataframe 
@@ -458,7 +549,91 @@ out
 summary(out)
 p_val
 
+#plot the original data
+
+glm_coef <- coef(out)
+
+glm_b0_hat <- glm_coef[1] # extract intercept b0_hat (hat is ^ which means estimated) - an alternative way is using  ls_fit$coefficients[1]
+glm_b1_hat <- glm_coef[2] # extract the slope b1 -alternative is ls_fit$coefficients[2]
+
+glm_y_hat <- glm_b0_hat + glm_b1_hat   # Generate the predicted data based on estimated parameters
+out$glm_y_hat <- glm_y_hat
+
+ggplot(out, aes(x = x, y = y)) + 
+  geom_point() +
+  geom_line(aes(x = x, y = glm_y_hat), colour = "blue")
+
+
+glm_ls_residual <- residuals(out) # extract the residual can also be accessed via ls_fit$residuals
+
+
+plot(glm_ls_residual) # scatter plot of residuals
+hist(glm_ls_residual) #histogram of the residuals 
+mean(glm_ls_residual)
+var(glm_ls_residual)
+boxplot(residuals(out))
+glm_fit <- glm(log(y) ~ x + z +log(lib_size), data = tmp, family = "poisson")
+
+summary(out)
+summary(glm_fit)
+summary(tmp)
+
+
+
+with(out, cbind(res.deviance = deviance, df = df.residual,
+  p = pchisq(deviance, df.residual, lower.tail=FALSE)))
+
+#force ggplot to plot z according to order
+#tmp$z[1]<- "Patient.15N"
+#tmp$label <- factor(tmp$z, levels = tmp$z )
+
+ggplot(tmp, aes(x=z, y=y, colour = x)) +
+  geom_point() +geom_boxplot()+scale_color_brewer(palette="Set1") + labs(title= "Gene Expresion per Patient", x ="Patient", y ="Gene Expression Level") +theme(plot.title=element_text(hjust=0.5), axis.text.x = element_text(angle = 90, hjust = 0.5))
+
+ggplot(tmp, aes(x=lib_size, y=y, colour = label)) +
+  geom_point()+scale_color_brewer(palette="Set1")
+
+hist(tmp, main = "")
+problem_sample <- filter(tmp,tmp$y >9000 )
+problem_sample
+
+
+# Calculate residuals
+tmp$deviance_residuals <- residuals(out, type = "deviance")
+tmp$pearson_residuals <- residuals(out, type = "pearson")
+
+# Plot deviance residuals
+library(ggplot2)
+ggplot(tmp, aes(x = 1:nrow(tmp), y = deviance_residuals)) +
+  geom_point() +
+  geom_hline(yintercept = c(-2, 2), color = "red", linetype = "dashed") +
+  labs(title = "Deviance Residuals", x = "Sample Index", y = "Residuals")
+
+# Identify outliers
+outliers <- which(abs(tmp$deviance_residuals) > 2)
+plot(out, which = 1)
+
+overdispersion <- sum(residuals(out, type = "pearson")^2) / df.residual(out)
+print(overdispersion)
+ggplot(tmp, aes(x = z, y = y, fill = x)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~x) +
+  labs(title = "Bar Plot with Facets", x = "Category", y = "Value") +
+  theme_minimal()+theme(plot.title=element_text(hjust=0.5), axis.text.x = element_text(angle = 90, hjust = 0.5))
+
+
+ggplot(tmp, aes(x=z, y=y, colour = x)) +  #geom_point() +
+   geom_bar(stat="summary", fun=mean, aes(colour=x, fill=x), width = 0.5)+ scale_color_brewer(palette="Set1") + labs(title= "Gene Expresion per Patient", x ="Patient", y ="Gene Expression Level") +theme(plot.title=element_text(hjust=0.5), axis.text.x = element_text(angle = 90, hjust = 0.5))+stat_summary(geom="errorbar", width =0.4)
+
+
+
+boxplot(tmp$y, colou)
+
+ggplot(tmp, aes( y=y, colour = x)) +  
+  geom_boxplot()
 ```
+
+Sample016 is the problematic sample because it exists outside the range.
 
 ## Q 7 Differential Expression
 
