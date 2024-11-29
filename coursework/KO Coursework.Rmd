@@ -354,35 +354,18 @@ library(tidyverse)
 library(MASS)
 
 #load the dataset required
-go <- load("assess_data_1224.Rdata") #data in different directory so 
+load("~/UOB/coursework/assess_data_1224.Rdata") #data in different directory so set absolute path
 
-view(go)
-view(Y)
-view(patient_data)
-str(go)
+#get summary of the Y
+summary(Y)
 
-idx <- 20
-c_cl <- 15:30
-
-boxplot(log2(Y[, c_cl] + 1)) 
+#create a box plot of the log 2 values of the data
+boxplot(log2(Y+ 1))
 
 
-x <- patient_data$tissue[c_cl] 
-
-z <- patient_data$patient[c_cl] 
-
-tmp <- data.frame(y = Y[idx, c_cl], x = x, z = z, lib_size = colSums(Y[, c_cl])) 
-
-out <- glm(y ~ x + z + lib_size, data = tmp, family = "poisson") 
-
-p_val <- summary(out)$coefficients[2, 4]
-
-tmp
-out
-summary(out)
-p_val
 
 ```
+Sample 3 is the problematic sample because it has a gene expression level of zero in all genes. 
 
 ## Q 7 Differential Expression
 
@@ -394,23 +377,45 @@ library(tidyverse)
 library(MASS)
 
 #load the dataset required
-go<- load("assess_data_1224.Rdata")
+load("assess_data_1224.Rdata")
 
-idx <- 20
+#assign data tissue column in patient_data to x
+x <- patient_data$tissue  
 
+#find the no of genes in the matrix
+g_rows <- nrow(Y) 
 
-x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
-tmp <- data.frame(y = Y[idx, ], x = x)#create a dataframe 
-tmp
-out <- glm(y ~ x, data = tmp, family = "poisson") #perform general linear model based on poisson distribution rule
-out
-p_val <- summary(out)$coefficients[2, 4]
-p_val
-summary(out)
+#initialise empty vector to store pvalues of each gene 
+p_val <- rep(0, g_rows) 
+
+# Loop over rows(genes) in y matrix and perform glm
+for (gene in 1:g_rows) {
+  #create a dataframe of each row of genes in Y and x
+    tmp1 <- data.frame(y = Y[gene, ], x = x) 
     
-p_val_df<- data.frame(p_vals = p_val, gene_no = idx) #create a dataframe using the p_val vector and the genes number
-ggplot(p_val_df, aes(x = idx, y = -log10(p_vals+1))) + #plot the each pvalue  plus one since the pval is 0
-    geom_point(size = 2.5, col = "dodgerblue1")
+    #perform general linear model based on poisson distribution rule
+    out1 <- glm(y ~ x, data = tmp1, family = "poisson") 
+    
+    #extract pvalues for each gene
+    p_val[gene] <- summary(out1)$coefficients[2, 4]
+}
+
+#adjust the p values using bonferroni correction
+adj_p_val <- p.adjust(p_val, "bonferroni")
+
+#assign gene names from row names in Y matrix
+gene_names <- rownames(Y)
+
+# create data.frame of the adjusted p-values and gene names 
+adj_p_val_df <- data.frame(p_values = adj_p_val, gene_no = 1:g_rows) 
+
+#plot each pvalue for each gene
+ggplot(adj_p_val_df, aes(x = gene_no, y = -log10(p_values))) +
+    geom_point(size = 1, col = "red") +
+    labs(x = "Genes" ,
+         y = "-log10(adjusted p-value)",
+         title = "MAnhattan Plot of Gene Expression") +
+    theme(legend.title = element_blank(), plot.title=element_text(hjust=0.5))
 
 ```
 
@@ -497,9 +502,11 @@ ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals))) + #plot the each pvalue f
 #     labs(y = "-log10(adjusted p-value)")
 ```
 
+
 Compare the p-values with and without inclusion of the tissue type as a covariate, what do you observe? Which of the covariate has the biggest effect? Explain your answer with supporting plots, tables and further analysis if required.
 
 ```{r}
+
 for (gene in 1:g) {
     tmp3 <- data.frame(y = Y[gene, ], x = x, patient = z) #create a dataframe for each row of genes in Y
     out2 <- glm(y~z, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
@@ -513,7 +520,9 @@ ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) + #plot the each pvalue
     geom_point(size = 2.5, col = "dodgerblue1")
 
 anova(glm_1, glm_2, test = "LRT")
+
 ```
+
 
 Explain the results from the differential expression analysis. What do you observe from the p-values and the effect sizes? What is the effect of including the tissue type as a covariate? What is the effect of the library size on the analysis? You don’t need to perform any further analysis.
 
