@@ -529,7 +529,7 @@ go<- load("assess_data_1224.Rdata") #data in differ4ent directory so
 
 # view(go)
 # view(Y)
-# view(patient_data)
+view(patient_data)
 # str(go)
 
 idx <- 20
@@ -615,6 +615,7 @@ plot(out, which = 1)
 
 overdispersion <- sum(residuals(out, type = "pearson")^2) / df.residual(out)
 print(overdispersion)
+
 ggplot(tmp, aes(x = z, y = y, fill = x)) +
   geom_col(position = "dodge") +
   facet_wrap(~x) +
@@ -631,9 +632,24 @@ boxplot(tmp$y, colou)
 
 ggplot(tmp, aes( y=y, colour = x)) +  
   geom_boxplot()
+
+
+
+residuals_df <-
+data.frame(resid = residuals(out))
+
+ggplot(residuals_df, aes(x = resid)) +
+    geom_histogram(bins = 10)
+
+plot(out, which = 2)
 ```
 
 Sample016 is the problematic sample because it exists outside the range.
+
+```{r}
+summary(Y)
+```
+Sample 3 is the problematic sample because it has a gene expression level of zero in all genes. 
 
 ## Q 7 Differential Expression
 
@@ -645,69 +661,40 @@ library(tidyverse)
 library(MASS)
 
 #load the dataset required
-go<- load("assess_data_1224.Rdata")
+load("assess_data_1224.Rdata")
 
-idx <- 20
+#assign data tissue column in patient_data to x
+x <- patient_data$tissue  
 
+#find the no of genes in the matrix
+g_rows <- nrow(Y) 
 
-x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
-tmp <- data.frame(y = Y[idx, ], x = x)#create a dataframe 
-tmp
-out <- glm(y ~ x, data = tmp, family = "poisson") #perform general linear model based on poisson distribution rule
-out
-p_val <- summary(out)$coefficients[2, 4]
-p_val
-summary(out)
+#initialise empty vector to store pvalues of each gene 
+p_val <- rep(0, g_rows) 
+
+# Loop over rows(genes) in y matrix and perform glm
+for (gene in 1:g_rows) {
+  #create a dataframe of each row of genes in Y and x
+    tmp1 <- data.frame(y = Y[gene, ], x = x) 
     
-p_val_df<- data.frame(p_vals = p_val, gene_no = idx) #create a dataframe using the p_val vector and the genes number
-ggplot(p_val_df, aes(x = idx, y = -log10(p_vals+1))) + #plot the each pvalue  plus one since the pval is 0
-    geom_point(size = 2.5, col = "dodgerblue1")
-
-```
-
-##Q 8 Differential Expression with Covariates
-
-Perform a regression-based analysis to identify genes differentially expressed between normal and tumour samples including the tissue variable indicating if it is tumour or normal sample. Plot the appropriate log10 p-value from your analysis.
-
-```{r}
-#load necessary packages
-library(tidyverse) 
-library(MASS)
-
-#load the dataset required
-go<- load("assess_data_1224.Rdata")
-
-x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
-g<- nrow(Y) #find the length of the matrix
- 
-p_val <- rep(0, g)
-tissue_type <- rep(0, g)
-
-
-# Loop over genes
-for (gene in 1:g) {
-    tmp2 <- data.frame(y = Y[gene, ], x = x) #create a dataframe for each row of genes in Y
-    out <- glm(y ~ x, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
-    p_val[gene] <- summary(out)$coefficients[2, 4]#extract pvalues for each gene
-    tissue_type[gene] <- rownames(summary(out)$coefficients)[2] 
+    #perform general linear model based on poisson distribution rule
+    out1 <- glm(y ~ x, data = tmp1, family = "poisson") 
+    
+    #extract pvalues for each gene
+    p_val[gene] <- summary(out1)$coefficients[2, 4]
 }
-tmp2
-summary(out)
-p_val
-tissue_type
 
-p_val_df<- data.frame(p_vals = p_val, gene_no = 1:g) #create a dataframe using the p_val vector and the total no of genes
-p_val_df
-ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) + #plot the each pvalue for each gene
-    geom_point(size = 2.5, col = "dodgerblue1")
+#adjust the p values using bonferroni correction
+adj_p_val <- p.adjust(p_val, "bonferroni")
 
-adj_p_vals <- p.adjust(p_val, "bonferroni")
+# create data.frame of the adjusted p-values and gene no 
+adj_p_val_df <- data.frame(p_values = adj_p_val, gene_no = 1:g_rows) 
 
-p_val_df <- data.frame(p_vals = adj_p_vals, gene_no = 1:g) # create data.frame with p-values for plotting with ggplot
-
-ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) +
-    geom_point(size = 2.5, col = "dodgerblue1") +
-    labs(y = "-log10(adjusted p-value)")
+#plot each pvalue for each gene
+ggplot(adj_p_val_df, aes(x = gene_no, y = log10(p_values+1))) +
+    geom_point(size = 2.5, col = "red") +
+    labs(x = "Gene number" ,
+         y = "log10(adjusted p-value)")
 ```
 
 ```{r}
@@ -746,6 +733,282 @@ ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals))) + #plot the each pvalue f
 # ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) +
 #     geom_point(size = 2.5, col = "dodgerblue1") +
 #     labs(y = "-log10(adjusted p-value)")
+    
+p_val_df<- data.frame(p_vals = p_val, gene_no = idx) #create a dataframe using the p_val vector and the genes number
+ggplot(p_val_df, aes(x = idx, y = -log10(p_vals+1))) + #plot the each pvalue  plus one since the pval is 0
+    geom_point(size = 2.5, col = "dodgerblue1")
+
+```
+
+##Q 8 Differential Expression with Covariates
+
+Perform a regression-based analysis to identify genes differentially expressed between normal and tumour samples including the tissue variable indicating if it is tumour or normal sample. Plot the appropriate log10 p-value from your analysis.
+
+```{r}
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+library(dplyr)
+#load the dataset required
+load("assess_data_1224.Rdata")
+
+x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
+g<- nrow(Y) #find the length of the matrix
+ 
+p_val <- rep(0, g)
+estimate <- rep(0, g)
+
+# Loop over genes
+for (gene in 1:g) {
+    tmp2 <- data.frame(y = Y[gene, ], x = x) #create a dataframe for each row of genes in Y
+    out <- glm(y ~ x, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
+    p_val[gene] <- summary(out)$coefficients[2, 4]#extract pvalues for each gene
+    estimate[gene] <- summary(out)$coefficients[2,1] 
+    
+}
+#summary(out)
+
+p_val_df<- data.frame(p_vals = p_val, gene_no = 1:g) #create a dataframe using the p_val vector and the total no of genes
+# p_val_df
+# ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) + #plot the each pvalue for each gene
+#     geom_point(size = 2.5, col = "dodgerblue1")
+
+#adj_p_vals <- p.adjust(p_val, "bonferroni")
+
+adj_p_vals <- p.adjust(p_val, "BH")
+
+#p_val_df <- data.frame(p_vals = adj_p_vals, gene_no = 1:g) # create data.frame with p-values for plotting with ggplot
+
+#log_pval<- -log10(p_val_df$p_vals)
+#barplot(log_pval, names.arg = 1:length(log_pval), las =2, main = "xcfhbfgjn", xlab = "genes", ylab = "logpvalues", ylim = NULL)
+# 
+# ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals))) +
+#     geom_point(size = .5, col = "dodgerblue1") +
+#     labs(y = "-log10(adjusted p-value)")
+
+
+
+# ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals))) + geom_bar(stat = "identity", fill = "skyblue") + 
+#         geom_hline(yintercept = -log10(0.05), colour = "red", linetype = "dashed")
+
+p_val_df <- data.frame(p_vals = adj_p_vals, gene_no = 1:g, estimates = estimate)
+
+# p_val_df$Significance[p_val_df$p_vals < 0.05] <- "Significant"
+# p_val_df$Significance[p_val_df$p_vals > 0.05] <- "Not Significant"
+# p_val_df$Expression_type[p_val_df$estimates > 0] <- "Upregulated"
+p_val_df$Significance <- ifelse(p_val_df$p_vals < 0.05, "Significant", "Not Significant")
+p_val_df$Expression_type <- ifelse(p_val_df$estimates > 0.05, "Upregulated", "Downregulated")
+
+#volcano plot
+ggplot(p_val_df, aes(x = log2(estimates), y = -log10(p_vals))) +
+  geom_point(aes(color = Significance), alpha = 0.8, size = 1) +
+  scale_color_manual(values = c("green", "red")) +
+  theme_minimal() +
+  labs(title = "Volcano Plot",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value") +
+  theme(legend.title = element_blank(), plot.title=element_text(hjust=0.5), axis.text.x = element_text(angle = 90, hjust = 0.5)) +
+  geom_vline(xintercept = c(-1, 1), col = "black", linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), col = "black", linetype = "dashed") +
+  geom_text(data = p_val_df[1:10, ],  # Label top 10 significant genes
+            aes(label = gene_no), size = 3, vjust = 1.5, hjust = 0.5)
+```
+
+testing desq
+```{r}
+
+library(DESeq2)
+#create a deseq dataset from the Y matrix and patient data
+dds <- DESeqDataSetFromMatrix(countData = Y,
+colData = patient_data,
+design = ~ tissue)
+dds
+#set the control/reference group
+dds$tissue <- relevel(dds$tissue, ref="Normal")
+
+
+#prefilter to remove any gene with 0 reads
+dds <- dds[ rowSums(counts(dds)) > 1, ]
+
+dds
+#run the desq analysis
+dds <- DESeq(dds)
+res <- results(dds)
+res
+
+
+```
+did not work because dseq cant log transform genes with 0
+
+
+testing edger
+```{r}
+
+library(edgeR)
+
+#load the dataset required
+load("assess_data_1224.Rdata")
+
+x <- patient_data$tissue 
+
+g <- nrow(Y)
+
+#create a dgelist object
+y <- DGEList(counts=Y, samples= patient_data)
+
+#create a design matrix with x as the only group
+design <- model.matrix(~x, data=y$samples)
+
+#assign column name in y to the row name in design
+rownames(design) <- colnames(y)
+
+
+
+#filter for samples that have colsums greater than 0
+non_zero <- colSums(y$counts) > 0  
+
+#extract only filtered values
+y <- y[, non_zero]
+
+#remove column in design that is not in y
+design <- design[colnames(y$counts), , drop = FALSE]
+
+#filter out lowly expressed genes
+keep <- filterByExpr(y, design)
+
+#remove column in libsize that is not in y
+y <- y[keep, , keep.lib.sizes=FALSE]
+
+#normalise the library sizes  to minimize the log-fold changes between the samples
+y <- normLibSizes(y)
+
+#estimate the negative binomial dispersions,  
+y <- estimateDisp(y, design)
+
+#fitting of the negative binomial glm to y
+fit <- glmFit(y, design)
+
+#perform hypothesis testing using likelihood ratio test
+lrt <- glmLRT(fit)
+
+#check no of genes differently expressed
+summary(decideTests(lrt))
+
+#assign gene names from row names in Y matrix
+gene_names <- rownames(y)
+
+#retrieve data from the lrt
+lrt_df <- data.frame(topTags(lrt, n = g), gene_name = gene_names)
+
+
+#plot the genes according to expression
+plotMD(lrt)
+abline(h=c(-1, 1), col="blue") #add a line to divide the sections
+
+#label each gene based on significance of the p values
+lrt_df$Significance[lrt_df$PValue < 0.05] <- "Significant"
+lrt_df$Significance[lrt_df$PValue > 0.05] <- "Not Significant"
+
+# Create the volcano plot with labels
+ggplot(lrt_df, aes(x = logFC, y = -log10(PValue))) +
+  geom_point(aes(color = Significance), alpha = 0.5, size = 0.5) +
+  xlim(c(-15, 15)) +
+  scale_color_manual(values = c("green", "red")) +
+  theme_minimal() +
+  labs(title = "Volcano Plot of Gene Expression",  
+       x = "Log2 Fold Change",
+       y = "-Log10 P-value") +
+  theme(legend.title = element_blank(), plot.title=element_text(hjust=0.5), axis.text.x = element_text(angle = 90, hjust = 0.5)) +
+  geom_vline(xintercept = c(-1, 1), col = "black", linetype = "dashed") + #create line threshold on y axis 
+  geom_hline(yintercept = -log10(0.05), col = "black", linetype = "dashed") +
+  geom_text(data = lrt_df[1:10, ],  # Label top 10 significant genes
+            aes(label = gene_name), size = 1.5, vjust = 1.5, hjust = 0.5,  nudge_x = 3, nudge_y = 0, check_overlap = TRUE)
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+
+# Extract the tissue type (tumor vs normal) as a factor
+tissue <- factor(patient_data$tissue)
+
+# Get the number of genes in the matrix
+g <- nrow(Y)
+
+# Initialize vectors to store results
+p_val <- numeric(g)
+estimates <- numeric(g)
+
+# Loop over each gene to perform regression
+for (gene in 1:g) {
+    # Create a temporary dataframe with expression and tissue type
+    tmp <- data.frame(y = Y[gene, ], tissue = tissue)
+    
+    # Poisson regression
+    model <- glm(y ~ tissue, data = tmp, family = "poisson")
+    
+    # Extract p-value and estimate for the tissue variable
+    p_val[gene] <- coef(summary(model))["tissueTumor", "Pr(>|z|)"]  # P-value for tissue
+    estimates[gene] <- coef(model)["tissueTumor"]  # Log fold change for tissue
+}
+
+# Adjust p-values for multiple testing (e.g., Benjamini-Hochberg)
+adj_p_val <- p.adjust(p_val, method = "BH")
+
+# Create a results dataframe
+results_df <- data.frame(
+  Gene = 1:g,
+  logFC = estimates,  # Log Fold Change
+  p_value = p_val,
+  adj_p_value = adj_p_val
+)
+
+# Add a significance column
+results_df$Significance <- ifelse(results_df$adj_p_value < 0.05, "Significant", "Not Significant")
+
+```
+
+
+```{r}
+
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+
+#load the dataset required
+load("assess_data_1224.Rdata")
+
+x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
+g<- nrow(Y) #find the length of the matrix
+z <- patient_data$patient
+
+p_val <- rep(0, g)
+tissue_type <- rep(0, g)
+
+
+# Loop over genes
+for (gene in 1:g) {
+    tmp2 <- data.frame(y = Y[gene, ], x = x, patient = z) #create a dataframe for each row of genes in Y
+    out <- glm(y~z+x, data = tmp2, family = "poisson") #perform general linear model based on poisson distribution rule
+    p_val[gene] <- summary(out)$coefficients[2, 4]#extract pvalues for each gene
+    #tissue_type[gene] <- rownames(summary(out)$coefficients)[2] 
+}
+
+summary(out)
+p_val_df<- data.frame(p_vals = p_val, gene_no = 1:g) #create a dataframe using the p_val vector and the total no of genes
+ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals))) + #plot the each pvalue for each gene
+    geom_point(size = 2.5, col = "dodgerblue1")
+
+# adj_p_vals <- p.adjust(p_val, "bonferroni")
+# 
+# p_val_df <- data.frame(p_vals = adj_p_vals, gene_no = 1:g) # create data.frame with p-values for plotting with ggplot
+
+# ggplot(p_val_df, aes(x = gene_no, y = -log10(p_vals+1))) +
+#     geom_point(size = 2.5, col = "dodgerblue1") +
+#     labs(y = "-log10(adjusted p-value)")
+
 ```
 
 Compare the p-values with and without inclusion of the tissue type as a covariate, what do you observe? Which of the covariate has the biggest effect? Explain your answer with supporting plots, tables and further analysis if required.
@@ -769,8 +1032,98 @@ anova(glm_1, glm_2, test = "LRT")
 Explain the results from the differential expression analysis. What do you observe from the p-values and the effect sizes? What is the effect of including the tissue type as a covariate? What is the effect of the library size on the analysis? You don’t need to perform any further analysis.
 
 ```{r}
+#load necessary packages
+library(tidyverse) 
+library(MASS)
+library(dplyr)
+#load the dataset required
+load("assess_data_1224.Rdata")
+
+x <- patient_data$tissue #assign data in row 15 to 30 in tissue column in patient_data to x 
+g<- nrow(Y) #find the length of the matrix
+ 
+p_val <- rep(0, g)
+estimate <- rep(0, g)
+gene_name <- rep(0,g)
+
+# Loop over genes
+for (gene in 1:g) {
+    tmp1 <- data.frame(y = Y[gene, ], x = x) #create a dataframe for each row of genes in Y
+    out1 <- glm(y ~ x, data = tmp1, family = "poisson") #perform general linear model based on poisson distribution rule
+    p_val[gene] <- summary(out1)$coefficients[2, 4]#extract pvalues for each gene
+    estimate[gene] <- summary(out1)$coefficients[2,1] #extract estimates for each gene
+    gene_name[gene] <-  rownames(Y)[gene] #extract estimates for each gene
+    
+}
+
+
+p_val_df<- data.frame(p_vals = p_val, gene_index = 1:g) #create a dataframe using the p_val vector and the total no of genes
+
+#adj_p_vals <- p.adjust(p_val, "bonferroni")
+
+adj_p_vals <- p.adjust(p_val, "BH")
+
+p_val_df <- data.frame(p_vals = adj_p_vals, gene_index = 1:g, estimates = estimate, gene_names = gene_name)
+
+
+p_val_df$Sig_Expression <- with(p_val_df, ifelse(
+  p_val_df$estimates > 0 & p_val_df$p_vals < 0.05, "Significant_Upregulated",
+  ifelse(p_val_df$estimates < 0 & p_val_df$p_vals < 0.05, "Significant_Downregulated", "Not_Significant")
+))
+
+# plot
+ggplot(p_val_df, aes(x = gene_index, y = -log10(p_vals+0.1))) +
+  geom_point(aes(color = Sig_Expression, shape = Sig_Expression), alpha = 0.8, size = 1) +
+  scale_color_manual(values = c(
+    "Significant_Upregulated" = "blue",
+    "Significant_Downregulated" = "red",
+    "Not_Significant" = "black")) +
+  scale_shape_manual(values = c("Significant_Upregulated" = 15,
+    "Significant_Downregulated" = 16,
+    "Not_Significant" =  17)) +
+  theme_minimal() +
+  labs(title = "Differentially Expressed Genes in Tumour vs Normal Samples",
+       x = "Gene Index",
+       y = "-Log10 Adjusted P-value") +
+  theme(legend.title = element_blank(), plot.title=element_text(hjust=0.5), legend.position = "bottom") +
+  #set threshold for significance
+  geom_hline(yintercept = -log10(0.05+0.1), col = "black", linetype = "dashed", size = 0.5) 
+
+# plot
+ggplot(p_val_df, aes(x = -log10(p_vals+0.1), y = estimates)) +
+  geom_point(aes(color = Group, shape = Group), alpha = 0.8, size = 1) +
+  scale_color_manual(values = c(
+    "Significant_Upregulated" = "blue",
+    "Significant_Downregulated" = "red",
+    "Not_Significant" = "black")) +
+  scale_shape_manual(values = c("Significant_Upregulated" = 15,
+    "Significant_Downregulated" = 16,
+    "Not_Significant" =  17)) +
+  theme_minimal() +
+  labs(title = "Differentially Expressed Genes in Tumour vs Normal Samples",
+       x = "Estimates",
+       y = "-Log10 Adjusted P-value") +
+  theme(legend.title = element_blank(), plot.title=element_text(hjust=0.5), legend.position = "bottom") +
+  geom_hline(yintercept = c(-0.5, 0.5), col = "black", linetype = "dashed", size =0.1) +
+  #set threshold for significance
+  geom_vline(xintercept = -log10(0.05+0.1), col = "black", linetype = "dashed", size = 0.1) 
 
 ```
+-log10(0+1) =  0
+-log10(0.02+1) = -0.008600172
+-log10(0.05+1) = -0.0211893
+-log10(0.055+1) = -0.02325246
+-log10(0.7+1) = -0.2304489
+-log10(1+1) = -0.30103
 
+any log10pvalues below -0.02 is not significant as it is above 0.05.
+
+A small p-value (e.g., < 0.05) suggests that the null hypothesis can be rejected, indicating that the gene is differentially expressed between tumor and normal samples.
+
+The significance of the p-value combined with the direction of the coefficient (estimate) from the regression model indicates:
+Upregulated genes: Genes with a positive coefficient (higher expression in tumor than in normal samples).
+Downregulated genes: Genes with a negative coefficient (lower expression in tumor than in normal samples).
+A significant p-value for a gene implies that its expression differs between tumor and normal samples, 
+ 
 ```{r}
 ```

@@ -277,7 +277,7 @@ average_per_patient_df <- as.data.frame(average_per_patient)
 colnames(average_per_patient_df) <- c(1:4)
 
 #create new row with patient numbers variable already declared in previous chunk
-average_per_patient_df$Patient_no <- c(1:100)
+average_per_patient_df$Patient_no <- c(1:1000)
 
 
 #group the values according to states
